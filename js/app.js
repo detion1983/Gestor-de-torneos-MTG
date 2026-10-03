@@ -10,7 +10,7 @@ const App = (() => {
     // Cambia SOLO esta linea al publicar una version nueva.
     // Formato recomendado: vMAYOR.MENOR.PARCHE  (p. ej. v1.1.0)
     // ------------------------------------------------------------------
-    const APP_VERSION = 'v1.1.0';
+    const APP_VERSION = 'v1.1.1';
 
     // Estado de la UI
     let currentTournamentId = null;
@@ -218,6 +218,24 @@ const App = (() => {
         renderTournaments();
     }
 
+    // Aplica al cronometro los minutos configurados en el torneo: refleja el
+    // valor en el campo "Minutos" y reinicia la cuenta si el cronometro esta
+    // detenido. Si la ronda esta en marcha no se interrumpe (se aplicara al
+    // generar la siguiente ronda).
+    function syncTimerFromConfig(minutes) {
+        if (!el.timerMinutes) return;
+        const min = Swiss.normalizeRoundMinutes(minutes);
+        if (!min) return; // sin tiempo fijo: no tocamos el cronometro
+        if (RoundTimer.isRunning()) return;
+        el.timerMinutes.value = String(min);
+        RoundTimer.reset();
+        RoundTimer.setDuration(min);
+        el.timerDisplay.textContent = RoundTimer.format(RoundTimer.getRemaining());
+        el.timerStatus.textContent = 'Detenido';
+        el.timerStatus.classList.remove('warning', 'expired', 'running');
+        el.timerDisplay.classList.remove('warning', 'expired', 'overtime');
+    }
+
     // Guarda los cambios de configuracion (rondas planificadas y Top) desde la
     // vista de detalle. Solo se permite mientras la fase suiza no este cerrada.
     function onSaveConfig() {
@@ -238,6 +256,8 @@ const App = (() => {
         tournament.topSize = Swiss.normalizeTopSize(el.configTopSize.value);
         tournament.roundMinutes = Swiss.normalizeRoundMinutes(el.configRoundMinutes.value);
         Storage.upsertTournament(tournament);
+        // Refleja el tiempo de ronda configurado en el cronometro (si esta parado).
+        syncTimerFromConfig(tournament.roundMinutes);
         renderDetail();
     }
 
@@ -486,6 +506,9 @@ const App = (() => {
         el.configTopSize.disabled = locked;
         el.configRoundMinutes.disabled = locked;
         el.saveConfigButton.disabled = locked;
+
+        // Refleja el tiempo de ronda configurado en el cronometro (si esta parado).
+        syncTimerFromConfig(minutes);
 
         if (locked) {
             el.configHint.textContent = tournament.playoff

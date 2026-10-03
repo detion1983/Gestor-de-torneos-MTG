@@ -1,6 +1,6 @@
 # Gestión de Torneos de Magic 🏆
 
-**Versión actual: v1.1.0** · 10 de marzo de 2026
+**Versión actual: v1.1.1** · 10 de marzo de 2026
 
 Gestor de torneos de **Magic: The Gathering** (sistema suizo, resultados y clasificación).
 Permite crear torneos, inscribir jugadores, generar rondas por sistema **suizo**,
@@ -275,6 +275,13 @@ La versión se define en **una sola línea** de `js/app.js` (`APP_VERSION`) y se
 muestra de forma discreta en el pie de la página y en el título de la pestaña.
 Al publicar cambios, sube el número (recomendado *vMAYOR.MENOR.PARCHE*) y añade
 una línea nueva al histórico con su **fecha**.
+
+### v1.1.1 · 10 de marzo de 2026
+- **Corrección**: al guardar la **Configuración** con un *Tiempo de ronda* nuevo, el
+  **cronómetro** no reflejaba esos minutos (seguía mostrando el valor por defecto).
+  Ahora, al guardar (o al abrir el torneo), el cronómetro adopta el tiempo configurado
+  si está detenido; si la ronda está en marcha no se interrumpe y se aplica al generar
+  la siguiente ronda.
 
 ### v1.1.0 · 10 de marzo de 2026
 - **Crear torneo simplificado**: se eliminan de la pantalla de creación los campos
