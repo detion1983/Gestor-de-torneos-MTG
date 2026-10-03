@@ -40,44 +40,16 @@
                             <input type="text" id="organizer" name="organizer" placeholder="Tu nombre">
                         </label>
                         <label>
-                            Formato
-                            <select id="format" name="format">
-                                <option>Standard</option>
-                                <option>Modern</option>
-                                <option>Pioneer</option>
-                                <option>Legacy</option>
-                                <option>Vintage</option>
-                                <option>Commander</option>
-                                <option>Pauper</option>
-                                <option>Draft</option>
-                                <option>Sealed</option>
-                            </select>
-                        </label>
-                        <label>
-                            Número de rondas
-                            <input type="number" id="roundCount" name="roundCount"
-                                   min="1" max="99" placeholder="Ej: 5 (vacío = sin límite)">
-                        </label>
-                        <label>
-                            Eliminatoria final (Top)
-                            <select id="topSize" name="topSize">
-                                <option value="0">Sin Top (solo suizo)</option>
-                                <option value="2">Top 2 (final directa)</option>
-                                <option value="4">Top 4</option>
-                                <option value="8" selected>Top 8</option>
-                            </select>
-                        </label>
-                        <label>
                             Tiempo de ronda (minutos)
                             <input type="number" id="roundMinutes" name="roundMinutes"
                                    min="1" max="240" placeholder="Ej: 50 (vacío = sin tiempo fijo)">
                         </label>
                     </div>
                     <p class="form-help">
-                        Define el <strong>número de rondas</strong>, el <strong>Top</strong> previsto
-                        y el <strong>tiempo de ronda</strong>. Al generar cada ronda el cronómetro
-                        arranca solo; podrás ajustarlos en el detalle del torneo mientras no
-                        cierres las inscripciones.
+                        El torneo se crea con los datos básicos. El <strong>número de rondas</strong>,
+                        el <strong>Top</strong> y el <strong>tiempo de ronda</strong> los ajustas ya
+                        dentro del torneo, en su <strong>Configuración</strong>, mientras no cierres
+                        las inscripciones. Al generar cada ronda el cronómetro arranca solo.
                     </p>
                     <button type="submit" class="btn primary">➕ Guardar Torneo</button>
                 </form>

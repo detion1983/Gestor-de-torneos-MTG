@@ -26,8 +26,7 @@ const Swiss = (() => {
             date: data.date || '',
             location: data.location || '',
             organizer: data.organizer || '',
-            format: data.format || 'Standard',
-            // Planificacion definida por el organizador al crear el torneo:
+            // Planificacion definida por el organizador (ajustable dentro del torneo):
             //   roundCount:   numero de rondas suizas planificadas (0 = sin limite)
             //   topSize:      tamano de la eliminatoria directa (0 = sin Top)
             //   roundMinutes: duracion de cada ronda en minutos (0 = sin tiempo fijo)
