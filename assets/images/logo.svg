@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 100" width="380" height="100">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4d97a"/>
+      <stop offset="0.5" stop-color="#c9a227"/>
+      <stop offset="1" stop-color="#8a6d1a"/>
+    </linearGradient>
+    <radialGradient id="bg" cx="50%" cy="35%" r="75%">
+      <stop offset="0" stop-color="#3b2a12"/>
+      <stop offset="1" stop-color="#120c04"/>
+    </radialGradient>
+  </defs>
+  <!-- icono trofeo -->
+  <rect x="8" y="18" width="64" height="64" rx="13" fill="url(#bg)" stroke="url(#gold)" stroke-width="3"/>
+  <path d="M28 30h24v9a12 12 0 0 1-24 0z" fill="url(#gold)"/>
+  <path d="M28 34h-6a2 2 0 0 0-2 2c0 6 5 10 10 10.5M52 34h6a2 2 0 0 1 2 2c0 6-5 10-10 10.5"
+        fill="none" stroke="url(#gold)" stroke-width="3" stroke-linecap="round"/>
+  <rect x="37" y="49" width="6" height="8" fill="url(#gold)"/>
+  <rect x="30" y="57" width="20" height="5" rx="2" fill="url(#gold)"/>
+  <rect x="25" y="63" width="30" height="5" rx="2" fill="#f4d97a"/>
+  <!-- texto -->
+  <text x="90" y="50" font-family="Georgia, 'Times New Roman', serif" font-size="30" font-weight="700" fill="#c9a227">Magic TCG</text>
+  <text x="90" y="76" font-family="Georgia, 'Times New Roman', serif" font-size="18" font-style="italic" fill="#e8c860">Gestión de torneos</text>
+</svg>

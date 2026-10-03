@@ -1,0 +1,7 @@
+# Coloca aquí tus sonidos del cronómetro.
+# Nombres y formatos recomendados (ver ../README.md):
+#   round-start.mp3     -> sonido al iniciar (opcional)
+#   round-warning.mp3   -> aviso 5 minutos antes de acabar
+#   round-end.mp3       -> aviso al terminar el tiempo
+#   round-tick.mp3      -> aviso del último minuto (opcional)
+# Si no pones archivos, la app genera un pitido por código.

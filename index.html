@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Torneos de Magic</title>
+    <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+    <link rel="alternate icon" href="assets/images/favicon.png">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header>
+        <img class="brand-logo" src="assets/images/logo.svg" alt="Magic TCG"
+             onerror="this.style.display='none'">
+        <h1>🏆 Gestión de Torneos de Magic</h1>
+        <p class="subtitle">Inscripción, rondas suizas, resultados y clasificación</p>
+    </header>
+
+    <main>
+        <!-- VISTA: LISTA DE TORNEOS -->
+        <section id="view-tournaments">
+            <div class="panel">
+                <h2>Crear torneo</h2>
+                <form id="tournamentForm">
+                    <div class="grid-2">
+                        <label>
+                            Nombre del torneo
+                            <input type="text" id="name" name="name" required placeholder="Ej: FNM Modern">
+                        </label>
+                        <label>
+                            Fecha
+                            <input type="date" id="date" name="date" required>
+                        </label>
+                        <label>
+                            Lugar
+                            <input type="text" id="location" name="location" placeholder="Ej: Tienda X">
+                        </label>
+                        <label>
+                            Organizador
+                            <input type="text" id="organizer" name="organizer" placeholder="Tu nombre">
+                        </label>
+                        <label>
+                            Formato
+                            <select id="format" name="format">
+                                <option>Standard</option>
+                                <option>Modern</option>
+                                <option>Pioneer</option>
+                                <option>Legacy</option>
+                                <option>Vintage</option>
+                                <option>Commander</option>
+                                <option>Pauper</option>
+                                <option>Draft</option>
+                                <option>Sealed</option>
+                            </select>
+                        </label>
+                        <label>
+                            Número de rondas
+                            <input type="number" id="roundCount" name="roundCount"
+                                   min="1" max="99" placeholder="Ej: 5 (vacío = sin límite)">
+                        </label>
+                        <label>
+                            Eliminatoria final (Top)
+                            <select id="topSize" name="topSize">
+                                <option value="0">Sin Top (solo suizo)</option>
+                                <option value="2">Top 2 (final directa)</option>
+                                <option value="4">Top 4</option>
+                                <option value="8" selected>Top 8</option>
+                            </select>
+                        </label>
+                        <label>
+                            Tiempo de ronda (minutos)
+                            <input type="number" id="roundMinutes" name="roundMinutes"
+                                   min="1" max="240" placeholder="Ej: 50 (vacío = sin tiempo fijo)">
+                        </label>
+                    </div>
+                    <p class="form-help">
+                        Define el <strong>número de rondas</strong>, el <strong>Top</strong> previsto
+                        y el <strong>tiempo de ronda</strong>. Al generar cada ronda el cronómetro
+                        arranca solo; podrás ajustarlos en el detalle del torneo mientras no
+                        cierres las inscripciones.
+                    </p>
+                    <button type="submit" class="btn primary">➕ Guardar Torneo</button>
+                </form>
+            </div>
+
+            <div class="panel">
+                <h2>Torneos guardados</h2>
+                <div class="toolbar">
+                    <button id="exportButton" class="btn ghost" type="button">⬇️ Exportar datos</button>
+                    <label class="btn ghost file-label">
+                        ⬆️ Importar datos
+                        <input type="file" id="importInput" accept="application/json" hidden>
+                    </label>
+                </div>
+                <ul id="tournamentList" class="tournament-list"></ul>
+                <p id="emptyTournaments" class="empty">No hay torneos todavía. Crea el primero arriba.</p>
+            </div>
+        </section>
+
+        <!-- VISTA: DETALLE DE TORNEO -->
+        <section id="view-detail" hidden>
+            <div class="toolbar">
+                <button id="backButton" class="btn ghost" type="button">⬅️ Volver</button>
+                <h2 id="detailTitle"></h2>
+                <button id="deleteTournamentButton" class="btn danger" type="button">🗑️ Eliminar torneo</button>
+            </div>
+
+            <div class="panel">
+                <h3>Inscripción de jugadores</h3>
+                <form id="playerForm" class="inline-form">
+                    <input type="text" id="playerName" list="knownPlayers" placeholder="Nombre del jugador" required>
+                    <datalist id="knownPlayers"></datalist>
+                    <button type="submit" class="btn primary">Añadir jugador</button>
+                </form>
+                <p class="hint">Los jugadores ya inscritos en torneos previos aparecen como sugerencia.</p>
+                <ul id="playerList" class="player-list"></ul>
+                <p id="emptyPlayers" class="empty">Sin jugadores inscritos.</p>
+            </div>
+
+            <div class="panel">
+                <h3>Configuración de rondas y Top</h3>
+                <div class="config-row">
+                    <label>
+                        Número de rondas
+                        <input type="number" id="configRoundCount" min="1" max="99"
+                               placeholder="vacío = sin límite">
+                    </label>
+                    <label>
+                        Eliminatoria final (Top)
+                        <select id="configTopSize">
+                            <option value="0">Sin Top (solo suizo)</option>
+                            <option value="2">Top 2 (final directa)</option>
+                            <option value="4">Top 4</option>
+                            <option value="8">Top 8</option>
+                        </select>
+                    </label>
+                    <label>
+                        Tiempo de ronda (minutos)
+                        <input type="number" id="configRoundMinutes" min="1" max="240"
+                               placeholder="vacío = sin tiempo fijo">
+                    </label>
+                    <button id="saveConfigButton" class="btn primary" type="button">💾 Guardar configuración</button>
+                </div>
+                <p id="configHint" class="hint"></p>
+            </div>
+
+            <div class="panel">
+                <div class="toolbar">
+                    <h3>Rondas</h3>
+                    <button id="generateRoundButton" class="btn primary" type="button">🎲 Generar siguiente ronda</button>
+                    <button id="undoRoundButton" class="btn danger" type="button">🔙 Deshacer última ronda</button>
+                    <button id="shareRoundButton" class="btn ghost" type="button">📤 Compartir ronda (WhatsApp)</button>
+                </div>
+                <div id="roundsContainer"></div>
+            </div>
+
+            <div class="panel" id="timerPanel">
+                <div class="toolbar">
+                    <h3>⏱️ Cronómetro de ronda</h3>
+                    <span id="timerStatus" class="timer-status">Detenido</span>
+                </div>
+                <div class="timer-body">
+                    <div id="timerDisplay" class="timer-display">25:00</div>
+                    <div class="timer-controls">
+                        <label class="timer-field">
+                            Minutos:
+                            <input id="timerMinutes" type="number" min="1" max="240" value="25" />
+                        </label>
+                        <button id="timerStartButton" class="btn primary" type="button">▶️ Iniciar</button>
+                        <label class="timer-field">
+                            Prórroga:
+                            <input id="timerAddMinutes" type="number" min="1" max="60" value="5" />
+                            min
+                        </label>
+                        <button id="timerAddButton" class="btn ghost" type="button" disabled>➕ Añadir tiempo</button>
+                        <button id="timerResetButton" class="btn ghost" type="button">🔄 Reiniciar</button>
+                        <button id="timerTestButton" class="btn ghost small" type="button">🔔 Probar sonido</button>
+                    </div>
+                    <p class="timer-help">
+                        Aviso acústico 5 minutos antes de acabar y al llegar a 0. Al terminar,
+                        el tiempo sigue contando en <strong>rojo</strong> como prórroga: usa
+                        <strong>➕ Añadir tiempo</strong> para dar minutos extra. Puedes poner
+                        tus propios sonidos en <code>assets/sounds/</code> (ver <code>assets/README.md</code>).
+                    </p>
+                </div>
+            </div>
+
+            <div class="panel" id="playoffPanel" hidden>
+                <div class="toolbar">
+                    <h3>Eliminación directa</h3>
+                    <button id="shareBracketButton" class="btn ghost" type="button">📤 Compartir bracket</button>
+                    <button id="undoPlayoffButton" class="btn danger" type="button">🔙 Deshacer última ronda Top</button>
+                </div>
+                <div id="playoffContainer"></div>
+            </div>
+
+            <div class="panel">
+                <h3>Clasificación (Standings)</h3>
+                <div class="table-wrap">
+                    <table id="standingsTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Jugador</th>
+                                <th>Pts</th>
+                                <th>OMW%</th>
+                                <th>GW%</th>
+                                <th>OGW%</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="toolbar">
+                    <button id="shareStandingsButton" class="btn ghost" type="button">📤 Compartir clasificación</button>
+                    <button id="closeSwissButton" class="btn primary" type="button">🔒 Cerrar suiza y generar Top</button>
+                    <select id="closeTopSize" title="Cambia el tipo de Top si lo necesitas">
+                        <option value="2">Top 2</option>
+                        <option value="4">Top 4</option>
+                        <option value="8">Top 8</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Datos guardados en tu navegador (localStorage). <span id="playerCount"></span></p>
+    </footer>
+
+    <script src="js/storage.js"></script>
+    <script src="js/swiss.js"></script>
+    <script src="js/share.js"></script>
+    <script src="js/timer.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

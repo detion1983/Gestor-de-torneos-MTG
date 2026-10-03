@@ -1,0 +1,548 @@
+/* ================================================================= */
+/* TEMA MAGIC: THE GATHERING                                          */
+/* Paleta tipo "grimorio": pergamino, bronce/oro, mana y bosque.       */
+/* ================================================================= */
+:root {
+    /* Colores de mana / MTG */
+    --gold: #c9a227;
+    --gold-light: #e8c860;
+    --gold-dark: #8a6d1a;
+    --bronze: #6b4f1d;
+    --parchment: #f3e6c4;
+    --parchment-dark: #e5d3a3;
+    --ink: #2b1d0e;
+    --ink-soft: #5a4326;
+
+    /* Bosque (verde MTG) para acciones primarias */
+    --green: #2f6b3a;
+    --green-dark: #1e4a26;
+    --green-light: #4f9f5e;
+
+    /* Rojo mana / peligro */
+    --red: #a5241b;
+    --red-dark: #7c180f;
+
+    /* Azul isla */
+    --blue: #244a76;
+
+    /* Neutros */
+    --grey: #ece0c0;
+    --border: #b8994f;
+    --text: #2b1d0e;
+
+    --panel-bg: #fbf3dd;
+    --card-shadow: 0 6px 16px rgba(43, 29, 14, 0.35);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: "Book Antiqua", "Palatino Linotype", Georgia, "Times New Roman", serif;
+    margin: 0;
+    padding: 0 0 40px;
+    color: var(--text);
+    background-color: #1a1206;
+    background-image:
+        radial-gradient(circle at 50% -10%, rgba(201, 162, 39, 0.18), transparent 55%),
+        radial-gradient(circle at 100% 100%, rgba(47, 107, 58, 0.22), transparent 45%),
+        radial-gradient(circle at 0% 80%, rgba(36, 74, 118, 0.18), transparent 45%),
+        repeating-linear-gradient(45deg, rgba(0,0,0,0.06) 0 6px, transparent 6px 12px);
+    background-attachment: fixed;
+}
+
+header {
+    position: relative;
+    background:
+        linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.5)),
+        linear-gradient(135deg, #3b2a12, #1e4a26 60%, #244a76);
+    color: var(--gold-light);
+    padding: 26px 20px 22px;
+    text-align: center;
+    border-bottom: 3px double var(--gold);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.85rem;
+    letter-spacing: 0.5px;
+    color: var(--gold-light);
+}
+
+.subtitle {
+    margin: 8px 0 0;
+    color: var(--parchment);
+    opacity: 0.95;
+    font-size: 0.95rem;
+    font-style: italic;
+}
+
+.brand-logo {
+    display: block;
+    max-height: 60px;
+    margin: 0 auto 10px;
+    background: rgba(251, 243, 221, 0.95);
+    padding: 6px 14px;
+    border: 2px solid var(--gold);
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+}
+
+main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 20px;
+}
+
+/* Paneles con aspecto de "carta" con marco dorado */
+.panel {
+    position: relative;
+    background:
+        linear-gradient(180deg, var(--panel-bg), var(--parchment-dark));
+    border: 2px solid var(--gold);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 22px;
+    box-shadow: var(--card-shadow), inset 0 0 0 3px rgba(139, 109, 26, 0.25);
+}
+
+.panel::before {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border: 1px solid rgba(139, 109, 26, 0.35);
+    border-radius: 7px;
+    pointer-events: none;
+}
+
+.panel h2, .panel h3 {
+    margin-top: 0;
+    color: var(--bronze);
+    font-variant: small-caps;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+label {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.85rem;
+    font-weight: 600;
+    gap: 4px;
+    color: var(--ink-soft);
+    font-variant: small-caps;
+}
+
+input, select {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    color: var(--ink);
+    background: #fffdf7;
+}
+
+input:focus, select:focus {
+    outline: 2px solid var(--gold);
+    border-color: var(--gold-dark);
+    box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.25);
+}
+
+.btn {
+    border: 1px solid var(--gold-dark);
+    border-radius: 6px;
+    padding: 9px 14px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: filter 0.15s, transform 0.08s, box-shadow 0.15s;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.btn:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25); }
+
+.btn.primary {
+    background: linear-gradient(180deg, var(--green-light), var(--green-dark));
+    color: #fdf6df;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.btn.primary:hover { filter: brightness(1.12); }
+.btn.danger {
+    background: linear-gradient(180deg, #cf3a2c, var(--red-dark));
+    color: #fdf6df;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.btn.danger:hover { filter: brightness(1.12); }
+.btn.ghost {
+    background: linear-gradient(180deg, #fff8e6, var(--parchment-dark));
+    color: var(--bronze);
+}
+.btn.ghost:hover { filter: brightness(1.05); }
+.btn.small { padding: 5px 9px; font-size: 0.8rem; }
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.toolbar h2, .toolbar h3 { margin: 0; flex: 1; }
+
+.file-label { display: inline-block; }
+
+.inline-form { display: flex; gap: 8px; flex-wrap: wrap; }
+.inline-form input { flex: 1; min-width: 160px; }
+
+.hint { font-size: 0.78rem; color: var(--ink-soft); margin: 8px 0; }
+.empty { color: var(--ink-soft); font-style: italic; font-size: 0.85rem; opacity: 0.8; }
+
+/* Ayuda del formulario de crear torneo y configuracion de rondas/Top */
+.form-help {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin: 10px 0;
+    font-style: italic;
+}
+.config-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+}
+.config-row label { min-width: 150px; }
+.config-row .btn { align-self: flex-end; }
+
+.tournament-list, .player-list { list-style: none; margin: 0; padding: 0; }
+
+.tournament-list li, .player-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    background: #fffdf5;
+}
+
+.tournament-list li .meta { flex: 1; cursor: pointer; }
+.tournament-list li .meta strong { display: block; color: var(--bronze); }
+.tournament-list li .meta small { color: var(--ink-soft); }
+.player-list li .name { flex: 1; font-weight: 600; }
+.player-list li.dropped .name { text-decoration: line-through; color: #9c8a63; }
+
+.badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    padding: 2px 9px;
+    border-radius: 10px;
+    background: var(--grey);
+    color: var(--ink);
+    font-weight: 700;
+    font-variant: small-caps;
+    border: 1px solid var(--gold-dark);
+}
+.badge.open { background: #ffe9c2; color: #8a4b00; }
+.badge.running { background: #d6e4f5; color: var(--blue); }
+.badge.closed { background: #d8ebd3; color: var(--green-dark); }
+
+.round {
+    border: 1px solid var(--gold-dark);
+    border-radius: 6px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    background: #fffdf5;
+}
+.round > summary {
+    background: linear-gradient(180deg, #f0e0b4, var(--parchment-dark));
+    padding: 10px;
+    font-weight: 700;
+    color: var(--bronze);
+    font-variant: small-caps;
+    cursor: pointer;
+}
+
+.pairing {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.pairing .table-no { font-weight: 700; color: var(--bronze); width: 48px; }
+.pairing .players { flex: 1; min-width: 180px; }
+.pairing .names { font-weight: 600; }
+.pairing .vs { color: var(--gold-dark); margin: 0 6px; font-style: italic; }
+.pairing.bye { background: #eaf3e0; }
+.pairing .result-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+}
+
+.result-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: rgba(243, 230, 196, 0.06);
+}
+
+.result-group-label {
+    font-size: 0.72rem;
+    font-variant: small-caps;
+    letter-spacing: 0.3px;
+    color: var(--bronze);
+    font-weight: 700;
+    margin-right: 2px;
+    white-space: nowrap;
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.result-buttons button.score-btn {
+    min-width: 40px;
+    text-align: center;
+}
+
+.result-buttons button.active {
+    background: linear-gradient(180deg, var(--green-light), var(--green-dark));
+    color: #fdf6df;
+    border-color: var(--gold-dark);
+}
+
+.result-buttons .clear-btn {
+    color: var(--red);
+    border-color: var(--red);
+}
+
+.result-buttons .clear-btn:hover:not(:disabled) {
+    background: linear-gradient(180deg, #c0392b, var(--red));
+    color: #fdf6df;
+}
+
+.result-buttons .clear-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.table-wrap { overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+th {
+    background: linear-gradient(180deg, #3b2a12, #2a1e0d);
+    color: var(--gold-light);
+    font-variant: small-caps;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--gold);
+}
+tbody tr:nth-child(even) { background: rgba(201, 162, 39, 0.08); }
+tbody tr .rank { font-weight: 700; color: var(--bronze); }
+tbody tr:nth-child(1) .rank { color: #b8860b; }
+tbody tr:nth-child(1) { background: rgba(201, 162, 39, 0.22); font-weight: 600; }
+tbody tr.dropped td { color: #b0a078; }
+
+footer { text-align: center; color: var(--parchment); opacity: 0.85; font-size: 0.8rem; margin-top: 20px; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+
+/* Marcador estilo DCI */
+.score-btn { min-width: 54px; font-variant-numeric: tabular-nums; }
+
+/* Eliminación directa */
+.pairing .names.winner { font-weight: 700; color: var(--green-dark); }
+.champion {
+    margin-top: 12px;
+    padding: 16px;
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    font-variant: small-caps;
+    letter-spacing: 1px;
+    background: linear-gradient(180deg, #fff6da, #f0d98a);
+    border: 2px solid var(--gold);
+    border-radius: 10px;
+    color: var(--bronze);
+    box-shadow: 0 4px 14px rgba(201, 162, 39, 0.4), inset 0 0 0 3px rgba(139, 109, 26, 0.25);
+}
+
+
+/* Modal de compartir */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 6, 2, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 1000;
+}
+.modal {
+    background: linear-gradient(180deg, var(--panel-bg), var(--parchment-dark));
+    border: 2px solid var(--gold);
+    border-radius: 12px;
+    padding: 18px;
+    width: 100%;
+    max-width: 460px;
+    max-height: 90vh;
+    overflow: auto;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+.modal h3 { margin-top: 0; color: var(--bronze); font-variant: small-caps; }
+.share-help {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    background: rgba(201, 162, 39, 0.15);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin: 6px 0;
+}
+.share-feedback {
+    color: var(--green-dark);
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-top: 6px;
+}
+.share-text {
+    width: 100%;
+    height: 220px;
+    font-family: Consolas, monospace;
+    font-size: 0.82rem;
+    resize: vertical;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fffdf7;
+    color: var(--ink);
+}
+.modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Cronometro de ronda                                              */
+/* ---------------------------------------------------------------- */
+.timer-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+.timer-display {
+    font-family: "Book Antiqua", "Palatino Linotype", Georgia, serif;
+    font-size: 3.4rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--bronze);
+    background: linear-gradient(180deg, #fff6da, #efdca6);
+    border: 3px double var(--gold);
+    border-radius: 12px;
+    padding: 8px 30px;
+    text-shadow: 0 2px 3px rgba(255, 255, 255, 0.6);
+    box-shadow: inset 0 0 12px rgba(139, 109, 26, 0.35), 0 3px 10px rgba(0, 0, 0, 0.25);
+    transition: color 0.3s, background 0.3s, border-color 0.3s;
+}
+.timer-display.warning {
+    color: #8a4b00;
+    background: linear-gradient(180deg, #ffe6b8, #ffcf80);
+    border-color: #d98a1a;
+    animation: pulse-warn 1s ease-in-out infinite;
+}
+.timer-display.expired {
+    color: #fff6df;
+    background: linear-gradient(180deg, #cf3a2c, var(--red-dark));
+    border-color: var(--gold);
+    text-shadow: 0 2px 3px rgba(0, 0, 0, 0.6);
+    animation: pulse-warn 0.7s ease-in-out infinite;
+}
+/* Prórroga: el tiempo superó 0 y cuenta hacia arriba en rojo. */
+.timer-display.overtime {
+    color: #ffe1dc;
+    background: linear-gradient(180deg, #e24434, #7a1410);
+    border-color: #ff5b4a;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+    animation: pulse-warn 0.6s ease-in-out infinite;
+}
+@keyframes pulse-warn {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+}
+.timer-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+.timer-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    font-variant: small-caps;
+    font-weight: 700;
+    color: var(--ink-soft);
+}
+.timer-field input {
+    width: 70px;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    background: #fffdf7;
+    color: var(--ink);
+}
+.timer-status {
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: var(--grey);
+    color: var(--bronze);
+    font-variant: small-caps;
+    border: 1px solid var(--gold-dark);
+}
+.timer-status.running { background: #d8ebd3; color: var(--green-dark); }
+.timer-status.warning { background: #ffe6b8; color: #8a4b00; }
+.timer-status.expired { background: #f2c4bd; color: var(--red-dark); }
+.timer-help {
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    text-align: center;
+    margin: 0;
+}
+.timer-help code {
+    background: rgba(201, 162, 39, 0.2);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: Consolas, monospace;
+}
+
+@media (max-width: 620px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .pairing .table-no { width: auto; }
+    .timer-display { font-size: 2.4rem; padding: 6px 18px; }
+}

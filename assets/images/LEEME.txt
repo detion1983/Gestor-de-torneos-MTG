@@ -1,0 +1,10 @@
+# Coloca aquí tus imágenes (opcional).
+# Nombres y formatos recomendados (ver ../README.md):
+#   logo.png        -> logotipo de la tienda/torneo (PNG o SVG)
+#   favicon.png     -> icono de la pestaña (512x512 PNG)  o favicon.ico
+#   background.jpg  -> fondo de cabecera (JPG o WebP)
+#
+# YA INCLUIDOS (provisionales, creados por la app; sustitúyelos por los tuyos):
+#   favicon.svg / favicon.png  -> icono de la pestaña (trofeo verde)
+#   logo.svg    / logo.png     -> logotipo de cabecera "Magic TCG"
+#   (Si borras logo.svg, la cabecera sigue funcionando: la imagen se oculta sola.)

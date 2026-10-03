@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="75%">
+      <stop offset="0" stop-color="#3b2a12"/>
+      <stop offset="1" stop-color="#120c04"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4d97a"/>
+      <stop offset="0.5" stop-color="#c9a227"/>
+      <stop offset="1" stop-color="#8a6d1a"/>
+    </linearGradient>
+  </defs>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="12" fill="url(#bg)" stroke="url(#gold)" stroke-width="3"/>
+  <path d="M20 15h24v9a12 12 0 0 1-24 0z" fill="url(#gold)"/>
+  <path d="M20 19h-6a2 2 0 0 0-2 2c0 6 5 10 10 10.5M44 19h6a2 2 0 0 1 2 2c0 6-5 10-10 10.5"
+        fill="none" stroke="url(#gold)" stroke-width="3" stroke-linecap="round"/>
+  <rect x="29" y="34" width="6" height="8" fill="url(#gold)"/>
+  <rect x="22" y="42" width="20" height="5" rx="2" fill="url(#gold)"/>
+  <rect x="17" y="48" width="30" height="5" rx="2" fill="#f4d97a"/>
+  <path d="M32 6l1.6 4.4L38 12l-4.4 1.6L32 18l-1.6-4.4L26 12l4.4-1.6z" fill="#e8c860" opacity="0.9"/>
+</svg>
