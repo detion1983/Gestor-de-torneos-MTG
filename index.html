@@ -39,16 +39,11 @@
                             Organizador
                             <input type="text" id="organizer" name="organizer" placeholder="Tu nombre">
                         </label>
-                        <label>
-                            Tiempo de ronda (minutos)
-                            <input type="number" id="roundMinutes" name="roundMinutes"
-                                   min="1" max="240" placeholder="Ej: 50 (vacío = sin tiempo fijo)">
-                        </label>
                     </div>
                     <p class="form-help">
                         El torneo se crea con los datos básicos. El <strong>número de rondas</strong>,
-                        el <strong>Top</strong> y el <strong>tiempo de ronda</strong> los ajustas ya
-                        dentro del torneo, en su <strong>Configuración</strong>, mientras no cierres
+                        el <strong>Top</strong> y el <strong>tiempo de ronda</strong> los configuras
+                        ya dentro del torneo, en su <strong>Configuración</strong>, mientras no cierres
                         las inscripciones. Al generar cada ronda el cronómetro arranca solo.
                     </p>
                     <button type="submit" class="btn primary">➕ Guardar Torneo</button>
@@ -183,14 +178,6 @@
                         <tbody></tbody>
                     </table>
                 </div>
-                <p class="standings-legend">
-                    <strong>Columnas:</strong>
-                    <strong>Pts</strong> = puntos de torneo (victoria 3 · empate 1 · derrota 0 · bye 3) ·
-                    <strong>OMW%</strong> = % de victorias de tus <em>rivales</em> (fuerza de tus oponentes) ·
-                    <strong>GW%</strong> = % de <em>partidas</em> (games) que has ganado ·
-                    <strong>OGW%</strong> = % de partidas ganadas por tus <em>rivales</em>.
-                    <br>Se ordena por <strong>Pts</strong> y, en caso de empate, por <strong>OMW% &rarr; GW% &rarr; OGW%</strong> (desempates oficiales).
-                </p>
                 <div class="toolbar">
                     <button id="shareStandingsButton" class="btn ghost" type="button">📤 Compartir clasificación</button>
                     <button id="closeSwissButton" class="btn primary" type="button">🔒 Cerrar suiza y generar Top</button>

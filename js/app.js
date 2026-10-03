@@ -10,7 +10,7 @@ const App = (() => {
     // Cambia SOLO esta linea al publicar una version nueva.
     // Formato recomendado: vMAYOR.MENOR.PARCHE  (p. ej. v1.1.0)
     // ------------------------------------------------------------------
-    const APP_VERSION = 'v1.1.1';
+    const APP_VERSION = 'v1.2.0';
 
     // Estado de la UI
     let currentTournamentId = null;
@@ -211,7 +211,6 @@ const App = (() => {
             date: document.getElementById('date').value,
             location: document.getElementById('location').value,
             organizer: document.getElementById('organizer').value,
-            roundMinutes: document.getElementById('roundMinutes').value,
         });
         Storage.upsertTournament(tournament);
         el.tournamentForm.reset();
