@@ -202,15 +202,23 @@
                             <tr>
                                 <th>#</th>
                                 <th>Jugador</th>
-                                <th>Pts</th>
-                                <th>OMW%</th>
-                                <th>GW%</th>
-                                <th>OGW%</th>
+                                <th title="Puntos de torneo (victoria = 3, empate = 1, derrota = 0, bye = 3)">Pts</th>
+                                <th title="OMW% = Porcentaje de victorias de tus rivales (fuerza de tus oponentes)">OMW%</th>
+                                <th title="GW% = Porcentaje de partidas (games) que has ganado">GW%</th>
+                                <th title="OGW% = Porcentaje de partidas (games) ganadas por tus rivales">OGW%</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
                     </table>
                 </div>
+                <p class="standings-legend">
+                    <strong>Columnas:</strong>
+                    <strong>Pts</strong> = puntos de torneo (victoria 3 · empate 1 · derrota 0 · bye 3) ·
+                    <strong>OMW%</strong> = % de victorias de tus <em>rivales</em> (fuerza de tus oponentes) ·
+                    <strong>GW%</strong> = % de <em>partidas</em> (games) que has ganado ·
+                    <strong>OGW%</strong> = % de partidas ganadas por tus <em>rivales</em>.
+                    <br>Se ordena por <strong>Pts</strong> y, en caso de empate, por <strong>OMW% &rarr; GW% &rarr; OGW%</strong> (desempates oficiales).
+                </p>
                 <div class="toolbar">
                     <button id="shareStandingsButton" class="btn ghost" type="button">📤 Compartir clasificación</button>
                     <button id="closeSwissButton" class="btn primary" type="button">🔒 Cerrar suiza y generar Top</button>
@@ -226,6 +234,7 @@
 
     <footer>
         <p>Datos guardados en tu navegador (localStorage). <span id="playerCount"></span></p>
+        <p class="app-version">Versión <span id="appVersion">v1.0.0</span></p>
     </footer>
 
     <script src="js/storage.js"></script>

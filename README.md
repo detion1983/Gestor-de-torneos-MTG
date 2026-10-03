@@ -1,10 +1,13 @@
 # Gestión de Torneos de Magic 🏆
 
+**Versión actual: v1.0.0** · 10 de marzo de 2026
+
 Gestor de torneos de **Magic: The Gathering** (sistema suizo, resultados y clasificación).
 Permite crear torneos, inscribir jugadores, generar rondas por sistema **suizo**,
 introducir resultados y consultar la **clasificación** con los desempates oficiales.
 
 Aplicación 100% estática (HTML + CSS + JavaScript), sin servidor ni instalación.
+La versión se muestra de forma discreta en el pie de la página.
 
 ---
 
@@ -136,9 +139,12 @@ para detalles de sonidos e imágenes (logos, favicon, fondos).
    dependen de los resultados previos). Si se pulsa igualmente, aparece un aviso.
 3. Se emparejan por orden dentro del mismo bloque, evitando revancha si es posible
    (los jugadores con el mismo récord se enfrentan entre sí y no repiten rival).
-4. Si el número de jugadores activos es impar, el peor situado que aún no ha
-   tenido bye recibe un **bye** (victoria automática de 3 puntos). El **bye no
-   bloquea** la ronda: nace reportado y no cuenta como pendiente.
+4. Si el número de jugadores activos es impar, recibe un **bye**
+   (victoria automática de 3 puntos) **el peor clasificado que todavía no haya
+   recibido bye en el torneo** (estilo Wizards). Si varios candidatos están
+   **empatados exactamente** en el mismo standing (puntos y desempates), el bye
+   se **sortea entre ellos**. Nadie repite bye mientras queden jugadores sin
+   él. El **bye no bloquea** la ronda: nace reportado y no cuenta como pendiente.
 5. Cada ronda se genera manualmente con el botón **Generar siguiente ronda**. Al
    generarla, el **cronómetro de ronda arranca solo** con el **tiempo de ronda**
    configurado (si definiste uno).
@@ -172,10 +178,20 @@ borrar cada mesa a mano: usa el botón **🔙 Deshacer última ronda**.
 - Derrota: **0 puntos**
 - Bye: **3 puntos** (como victoria)
 
-### Desempates
-- **OMW%**: porcentaje de victorias de los rivales enfrentados.
-- **GW%**: porcentaje de partidas (*games*) ganadas.
-- **OGW%**: porcentaje de partidas de los rivales.
+### Desempates (columnas de la clasificación)
+
+En la tabla de clasificación verás estas columnas (pasa el ratón por encima para ver el texto de ayuda):
+
+- **Pts**: puntos de torneo. Victoria **3** · Empate **1** · Derrota **0** · Bye **3**.
+- **OMW%** (*Opponents' Match Win %*): **porcentaje de victorias de tus rivales**.
+  Mide la "fuerza" de los jugadores contra los que te has enfrentado.
+- **GW%** (*Game Win %*): **porcentaje de partidas (*games*) que has ganado**,
+  contando también los empates como media partida.
+- **OGW%** (*Opponents' Game Win %*): **porcentaje de partidas ganadas por tus
+  rivales**.
+
+**Orden:** primero por **Pts**, y en caso de empate por **OMW% → GW% → OGW%**
+(desempates oficiales). Si sigue el empate, por orden alfabético del nombre.
 
 ### Registro de resultados (marcador exacto)
 Al reportar cada partida se elige el **marcador real de games**, con botones rápidos:
@@ -250,3 +266,30 @@ automáticamente con los ganadores hasta mostrar al **🥇 Campeón**.
 - Sincronización online (backend).
 - Impresión / exportación de emparejamientos y standings en PDF.
 - Emparejamiento automático de mesas por disponibilidad / tiempos.
+
+---
+
+## 📌 Histórico de versiones
+
+La versión se define en **una sola línea** de `js/app.js` (`APP_VERSION`) y se
+muestra de forma discreta en el pie de la página y en el título de la pestaña.
+Al publicar cambios, sube el número (recomendado *vMAYOR.MENOR.PARCHE*) y añade
+una línea nueva al histórico con su **fecha**.
+
+### v1.0.0 · 10 de marzo de 2026
+- Versión inicial.
+- Creación de torneos, inscripción de jugadores y emparejamiento suizo.
+- **Byes** al peor clasificado sin bye previo, con **sorteo** entre empatados (estilo Wizards).
+- Resultados por marcador exacto (Bo3) y **clasificación** con desempates (OMW%, GW%, OGW%).
+- **Columnas de clasificación aclaradas en español** (leyenda + ayuda al pasar el ratón).
+- **Cronómetro de ronda** configurable con **arranque automático**, **prórroga en rojo
+  (cuenta hacia arriba)** y botón **➕ Añadir tiempo**.
+- Eliminación directa (Top 2 / 4 / 8), drop de jugadores, exportar/importar JSON y compartir.
+
+> **Plantilla para la próxima versión** (copia y rellena):
+>
+> ```markdown
+> ### vX.Y.Z · DD de mes de AAAA
+> - Cambio 1
+> - Cambio 2
+> ```

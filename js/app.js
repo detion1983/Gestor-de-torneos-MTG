@@ -5,6 +5,13 @@
  */
 
 const App = (() => {
+    // ------------------------------------------------------------------
+    // VERSION DE LA APP
+    // Cambia SOLO esta linea al publicar una version nueva.
+    // Formato recomendado: vMAYOR.MENOR.PARCHE  (p. ej. v1.1.0)
+    // ------------------------------------------------------------------
+    const APP_VERSION = 'v1.0.0';
+
     // Estado de la UI
     let currentTournamentId = null;
 
@@ -64,11 +71,19 @@ const App = (() => {
 
     function init() {
         cacheDom();
+        applyVersion();
         bindEvents();
         initTimer();
         renderTournaments();
         refreshKnownPlayers();
         updatePlayerCount();
+    }
+
+    // Pinta la version en el pie de pagina y en el titulo de la pestana.
+    function applyVersion() {
+        const label = document.getElementById('appVersion');
+        if (label) label.textContent = APP_VERSION;
+        document.title = 'Gestión de Torneos de Magic ' + APP_VERSION + ' 🏆';
     }
 
     // ----------------------------------------------------------------
@@ -162,7 +177,7 @@ const App = (() => {
         // Efecto de parpadeo del titulo de la pestana para llamar la atencion.
         if (typeof document !== 'undefined') {
             document.title = '⏰ ' + message;
-            setTimeout(() => { document.title = 'Gestión de Torneos de Magic 🏆'; }, 4000);
+            setTimeout(() => { document.title = 'Gestión de Torneos de Magic ' + APP_VERSION + ' 🏆'; }, 4000);
         }
     }
 

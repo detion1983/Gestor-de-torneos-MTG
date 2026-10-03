@@ -104,6 +104,27 @@ const Swiss = (() => {
     // repetir rival cuando sea posible; numero impar -> bye al de menor
     // puntuacion que aun no haya recibido bye.
     // ------------------------------------------------------------------
+
+    // ¿Dos jugadores comparten EXACTAMENTE el mismo standing? (mismos puntos
+    // y mismos desempates). Sirve para sortear el bye entre empatados.
+    // Ademas, si el candidato ya recibio bye antes, no se considera "empatado"
+    // para evitar repetirselo mientras haya otros sin bye.
+    function sameStanding(a, b, byed) {
+        if (byed && (byed.has(a.player.id) !== byed.has(b.player.id))) return false;
+        return (
+            a.matchPoints === b.matchPoints &&
+            a.omw === b.omw &&
+            a.gameWinPct === b.gameWinPct &&
+            a.ogw === b.ogw
+        );
+    }
+
+    // Elige un indice al azar de una lista (sorteo). Devuelve null si vacia.
+    function pickRandom(indexes) {
+        if (!indexes || indexes.length === 0) return null;
+        return indexes[Math.floor(Math.random() * indexes.length)];
+    }
+
     function generateRound(tournament, points) {
         // REGLA DEL SISTEMA SUIZO: no se puede emparejar una ronda nueva si la
         // ronda anterior tiene partidas sin resultado (incluye byes, que ya nacen
@@ -129,15 +150,29 @@ const Swiss = (() => {
         const faced = buildFacedMap(tournament);
         const byed = buildByeSet(tournament);
 
-        const pool = active.slice(); // ordenado por standings
+        const pool = active.slice(); // ordenado por standings (mejor -> peor)
         if (pool.length % 2 !== 0) {
+            // ESTILO WIZARDS: el bye va al PEOR clasificado que aun no haya
+            // recibido bye. Como `pool` esta ordenado de mejor a peor, el peor
+            // es el ultimo NO byeado. Si varios comparten EXACTAMENTE el mismo
+            // standing (puntos y desempates), se sortea entre ellos (aleatorio),
+            // igual que hace el software oficial al no haber criterio objetivo.
+            // Solo si TODOS los activos ya recibieron bye (caso irreal en un
+            // torneo normal) se repite, eligiendo al peor de todos.
+            let lastIdx = -1;
             for (let i = pool.length - 1; i >= 0; i--) {
-                if (!byed.has(pool[i].player.id)) {
-                    byePlayer = pool.splice(i, 1)[0];
-                    break;
-                }
+                if (!byed.has(pool[i].player.id)) { lastIdx = i; break; }
             }
-            if (!byePlayer) byePlayer = pool.pop();
+            if (lastIdx === -1) lastIdx = pool.length - 1; // todos byeados: peor a secas
+
+            const worst = pool[lastIdx];
+            // Candidatos empatados en el mismo standing que el peor elegible.
+            const tied = [];
+            for (let i = 0; i < pool.length; i++) {
+                if (sameStanding(pool[i], worst, byed)) tied.push(i);
+            }
+            const pickIdx = pickRandom(tied);
+            byePlayer = pool.splice(pickIdx === null ? lastIdx : pickIdx, 1)[0];
         }
 
         const used = new Set();
