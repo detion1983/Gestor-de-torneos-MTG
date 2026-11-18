@@ -10,10 +10,24 @@ const App = (() => {
     // Cambia SOLO esta linea al publicar una version nueva.
     // Formato recomendado: vMAYOR.MENOR.PARCHE  (p. ej. v1.1.0)
     // ------------------------------------------------------------------
-    const APP_VERSION = 'v1.2.0';
+    const APP_VERSION = 'v2.3.0';
+
+    // Clave donde se recuerda la ultima seccion abierta (torneos o mesa).
+    const VIEW_KEY = 'dci.view';
+
+    // Tira de arte de cabecera: panoramica opcional con las seis ilustraciones.
+    // Se prueba cada formato en orden y se usa el primero que exista.
+    const HERO_DIR = 'assets/images/';
+    const HERO_FILES = ['banner.jpg', 'banner.jpeg', 'banner.png', 'banner.webp'];
 
     // Estado de la UI
     let currentTournamentId = null;
+    // Identidad de color elegida en el formulario de creacion ('' = sin color).
+    let selectedColor = '';
+    // Color pendiente de subida en la Galeria arcana.
+    let pendingArtColor = '';
+    // Token para descartar carteles que terminan de pintarse fuera de tiempo.
+    let awardsToken = 0;
 
     // Referencias del DOM
     const el = {};
@@ -21,6 +35,9 @@ const App = (() => {
     function cacheDom() {
         el.viewTournaments = document.getElementById('view-tournaments');
         el.viewDetail = document.getElementById('view-detail');
+        el.viewTable = document.getElementById('view-table');
+        el.tabTournaments = document.getElementById('tabTournaments');
+        el.tabTable = document.getElementById('tabTable');
 
         el.tournamentForm = document.getElementById('tournamentForm');
         el.tournamentList = document.getElementById('tournamentList');
@@ -67,23 +84,113 @@ const App = (() => {
         el.timerAddMinutes = document.getElementById('timerAddMinutes');
         el.timerResetButton = document.getElementById('timerResetButton');
         el.timerTestButton = document.getElementById('timerTestButton');
+
+        // Cabecera y contadores
+        el.appVersionChip = document.getElementById('appVersionChip');
+        el.heroBand = document.getElementById('heroBand');
+        el.heroArt = document.getElementById('heroArt');
+        el.detailStatus = document.getElementById('detailStatus');
+        el.tournamentCount = document.getElementById('tournamentCount');
+        el.playerBadge = document.getElementById('playerBadge');
+        el.roundsChip = document.getElementById('roundsChip');
+        el.playoffChip = document.getElementById('playoffChip');
+        el.toastStack = document.getElementById('toastStack');
+
+        // Panel de vista previa para compartir
+        el.sharePanel = document.getElementById('sharePanel');
+        el.shareTitle = document.getElementById('shareTitle');
+        el.sharePreview = document.getElementById('sharePreview');
+        el.shareCopyImage = document.getElementById('shareCopyImage');
+        el.shareDownload = document.getElementById('shareDownload');
+        el.shareNative = document.getElementById('shareNative');
+        el.shareCopyText = document.getElementById('shareCopyText');
+        el.shareWhatsapp = document.getElementById('shareWhatsapp');
+        el.shareClose = document.getElementById('shareClose');
+        el.shareHint = document.getElementById('shareHint');
+
+        // Cartel del campeón
+        el.awardsPanel = document.getElementById('awardsPanel');
+        el.awardsChip = document.getElementById('awardsChip');
+        el.awardsSummary = document.getElementById('awardsSummary');
+        el.awardsPreview = document.getElementById('awardsPreview');
+        el.awardsCopyImage = document.getElementById('awardsCopyImage');
+        el.awardsDownload = document.getElementById('awardsDownload');
+        el.awardsNative = document.getElementById('awardsNative');
+
+        // Identidad de color y galeria de arte
+        el.colorOptions = document.getElementById('colorOptions');
+        el.artPanel = document.getElementById('artPanel');
+        el.artGallery = document.getElementById('artGallery');
+        el.artFileInput = document.getElementById('artFileInput');
+        el.detailHead = document.getElementById('detailHead');
+        el.detailBanner = document.getElementById('detailBanner');
+        el.detailColorTag = document.getElementById('detailColorTag');
+        el.detailColorSelect = document.getElementById('detailColorSelect');
+    }
+
+    // ------------------------------------------------------------------
+    // TIRA DE ARTE DE CABECERA
+    // Si existe assets/images/banner.jpg (o .jpeg, .png, .webp) se pinta una
+    // panoramica con las seis ilustraciones entre la cabecera y las pestanas.
+    // Sin archivo la banda se queda oculta y la app no cambia.
+    // ------------------------------------------------------------------
+    function mountHeroBand() {
+        if (!el.heroBand || !el.heroArt) return;
+        const img = el.heroArt;
+        let next = 0;
+        img.addEventListener('load', () => {
+            el.heroBand.hidden = false;
+            el.heroBand.classList.add('is-loaded');
+        });
+        img.addEventListener('error', () => {
+            next += 1;
+            if (next < HERO_FILES.length) {
+                img.src = HERO_DIR + HERO_FILES[next];
+            } else {
+                img.removeAttribute('src');
+                el.heroBand.hidden = true;
+            }
+        });
+        img.src = HERO_DIR + HERO_FILES[0];
     }
 
     function init() {
         cacheDom();
         applyVersion();
+        mountHeroBand();
         bindEvents();
         initTimer();
+        renderColorOptions();
+        renderDetailColorOptions();
+        renderArtGallery();
         renderTournaments();
         refreshKnownPlayers();
         updatePlayerCount();
+        // Contador de mesa (vidas, veneno y mana). La vista vive oculta hasta
+        // que se elige la pestana "Mesa".
+        if (typeof Table !== 'undefined') Table.init();
+        showSection(loadSection());
     }
 
-    // Pinta la version en el pie de pagina y en el titulo de la pestana.
+    // Ultima seccion usada: 'table' si el usuario se quedo en la mesa.
+    function loadSection() {
+        try {
+            return localStorage.getItem(VIEW_KEY) === 'table' ? 'table' : 'tournaments';
+        } catch (err) {
+            return 'tournaments';
+        }
+    }
+
+    // Pinta la version en el pie de pagina, en la cabecera y en el titulo.
     function applyVersion() {
         const label = document.getElementById('appVersion');
         if (label) label.textContent = APP_VERSION;
-        document.title = 'Gestión de Torneos de Magic ' + APP_VERSION + ' 🏆';
+        if (el.appVersionChip) el.appVersionChip.textContent = APP_VERSION;
+        document.title = baseTitle();
+    }
+
+    function baseTitle() {
+        return 'Torneos de Magic · DCI Reporter ' + APP_VERSION;
     }
 
     // ----------------------------------------------------------------
@@ -177,8 +284,84 @@ const App = (() => {
         // Efecto de parpadeo del titulo de la pestana para llamar la atencion.
         if (typeof document !== 'undefined') {
             document.title = '⏰ ' + message;
-            setTimeout(() => { document.title = 'Gestión de Torneos de Magic ' + APP_VERSION + ' 🏆'; }, 4000);
+            setTimeout(() => { document.title = baseTitle(); }, 4000);
         }
+    }
+
+    // ----------------------------------------------------------------
+    // AVISOS NO BLOQUEANTES Y CONFIRMACIONES
+    // ----------------------------------------------------------------
+    // Aviso flotante. type: 'info' (por defecto) | 'success' | 'error'.
+    function toast(message, type) {
+        if (!el.toastStack) return;
+        const box = document.createElement('div');
+        box.className = 'toast ' + (type || 'info');
+        box.textContent = message;
+        el.toastStack.appendChild(box);
+        const life = type === 'error' ? 5200 : 3200;
+        setTimeout(() => {
+            box.classList.add('out');
+            setTimeout(() => box.remove(), 260);
+        }, life);
+    }
+
+    // Diálogo de confirmación propio (sustituye a window.confirm).
+    // Devuelve una promesa: true si el organizador acepta.
+    function askConfirm(options) {
+        const opts = options || {};
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+
+            const title = document.createElement('h3');
+            title.textContent = opts.title || '¿Seguro?';
+            modal.appendChild(title);
+
+            const text = document.createElement('p');
+            text.textContent = opts.message || '';
+            modal.appendChild(text);
+
+            const actions = document.createElement('div');
+            actions.className = 'modal-actions';
+
+            const cancel = document.createElement('button');
+            cancel.className = 'btn ghost';
+            cancel.type = 'button';
+            cancel.textContent = opts.cancelLabel || 'Cancelar';
+
+            const ok = document.createElement('button');
+            ok.className = 'btn ' + (opts.danger === false ? 'primary' : 'danger');
+            ok.type = 'button';
+            ok.textContent = opts.okLabel || 'Aceptar';
+
+            function close(value) {
+                document.removeEventListener('keydown', onKey);
+                overlay.remove();
+                resolve(value);
+            }
+
+            function onKey(event) {
+                if (event.key === 'Escape') close(false);
+                if (event.key === 'Enter') close(true);
+            }
+
+            cancel.addEventListener('click', () => close(false));
+            ok.addEventListener('click', () => close(true));
+            overlay.addEventListener('click', (event) => {
+                if (event.target === overlay) close(false);
+            });
+            document.addEventListener('keydown', onKey);
+
+            actions.appendChild(cancel);
+            actions.appendChild(ok);
+            modal.appendChild(actions);
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+            ok.focus();
+        });
     }
 
     // ----------------------------------------------------------------
@@ -194,6 +377,14 @@ const App = (() => {
         el.exportButton.addEventListener('click', onExport);
         el.importInput.addEventListener('change', onImport);
 
+        // Pestanas de seccion: torneos y mesa.
+        if (el.tabTournaments) {
+            el.tabTournaments.addEventListener('click', () => showSection('tournaments'));
+        }
+        if (el.tabTable) {
+            el.tabTable.addEventListener('click', () => showSection('table'));
+        }
+
         el.shareRoundButton.addEventListener('click', onShareRound);
         el.shareStandingsButton.addEventListener('click', onShareStandings);
         el.shareBracketButton.addEventListener('click', onShareBracket);
@@ -202,6 +393,29 @@ const App = (() => {
         if (el.saveConfigButton) {
             el.saveConfigButton.addEventListener('click', onSaveConfig);
         }
+
+        // Compartir: vista previa, copiar imagen, descargar, compartir y texto.
+        if (el.shareClose) el.shareClose.addEventListener('click', closeSharePanel);
+        if (el.shareCopyImage) el.shareCopyImage.addEventListener('click', copyShareCanvas);
+        if (el.shareDownload) el.shareDownload.addEventListener('click', downloadShareCanvas);
+        if (el.shareNative) el.shareNative.addEventListener('click', nativeShareCanvas);
+        if (el.shareCopyText) {
+            el.shareCopyText.addEventListener('click', () => {
+                if (!shareState) return;
+                copyToClipboard(shareState.text, () => toast('Texto copiado al portapapeles', 'success'));
+            });
+        }
+
+        // Cartel del campeón.
+        if (el.awardsCopyImage) el.awardsCopyImage.addEventListener('click', copyAwardsCanvas);
+        if (el.awardsDownload) el.awardsDownload.addEventListener('click', downloadAwardsCanvas);
+        if (el.awardsNative) el.awardsNative.addEventListener('click', nativeAwardsCanvas);
+
+        // Identidad de color y galeria de arte.
+        if (el.colorOptions) el.colorOptions.addEventListener('click', onPickColor);
+        if (el.detailColorSelect) el.detailColorSelect.addEventListener('change', onDetailColorChange);
+        if (el.artGallery) el.artGallery.addEventListener('click', onArtGalleryClick);
+        if (el.artFileInput) el.artFileInput.addEventListener('change', onArtFileChosen);
     }
 
     function onCreateTournament(event) {
@@ -211,10 +425,213 @@ const App = (() => {
             date: document.getElementById('date').value,
             location: document.getElementById('location').value,
             organizer: document.getElementById('organizer').value,
+            color: selectedColor,
         });
         Storage.upsertTournament(tournament);
         el.tournamentForm.reset();
+        selectedColor = '';
+        renderColorOptions();
         renderTournaments();
+        toast('Torneo «' + tournament.name + '» creado. Entra para inscribir jugadores.', 'success');
+    }
+
+    // ----------------------------------------------------------------
+    // IDENTIDAD DE COLOR Y GALERIA DE ARTE
+    // ----------------------------------------------------------------
+    // Botones de color del formulario de creacion.
+    function renderColorOptions() {
+        if (!el.colorOptions) return;
+        el.colorOptions.innerHTML = '';
+        const options = [{ key: '', name: 'Sin color', arch: 'Neutro' }].concat(Art.list());
+        options.forEach((color) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'color-opt';
+            btn.dataset.color = color.key;
+            btn.setAttribute('aria-pressed', selectedColor === color.key ? 'true' : 'false');
+            btn.title = color.key
+                ? color.name + ' · ' + color.arch
+                : 'Torneo sin identidad de color';
+            if (color.key) {
+                btn.style.setProperty('--accent', color.accent);
+                const img = document.createElement('img');
+                img.className = 'color-opt-symbol';
+                img.src = color.symbol;
+                img.alt = '';
+                img.addEventListener('error', () => img.remove());
+                btn.appendChild(img);
+            } else {
+                const mark = document.createElement('span');
+                mark.className = 'color-opt-symbol color-opt-none';
+                mark.textContent = '◇';
+                mark.setAttribute('aria-hidden', 'true');
+                btn.appendChild(mark);
+            }
+            const name = document.createElement('span');
+            name.className = 'color-opt-name';
+            name.textContent = color.name;
+            const arch = document.createElement('span');
+            arch.className = 'color-opt-arch';
+            arch.textContent = color.arch;
+            btn.appendChild(name);
+            btn.appendChild(arch);
+            el.colorOptions.appendChild(btn);
+        });
+    }
+
+    // Selecciona / deselecciona un color en el formulario.
+    function onPickColor(event) {
+        const btn = event.target.closest('.color-opt');
+        if (!btn) return;
+        const key = btn.dataset.color || '';
+        selectedColor = (selectedColor === key) ? '' : key;
+        renderColorOptions();
+    }
+
+    // Opciones del selector de color de la cabecera del torneo.
+    function renderDetailColorOptions() {
+        if (!el.detailColorSelect) return;
+        el.detailColorSelect.innerHTML = '';
+        [{ key: '', name: 'Sin color' }].concat(Art.list()).forEach((color) => {
+            const option = document.createElement('option');
+            option.value = color.key;
+            option.textContent = color.key
+                ? color.name + ' (' + color.key.toUpperCase() + ')'
+                : color.name;
+            el.detailColorSelect.appendChild(option);
+        });
+    }
+
+    // Cambia el color de un torneo ya creado.
+    function onDetailColorChange() {
+        const tournament = Storage.getTournament(currentTournamentId);
+        if (!tournament) return;
+        tournament.color = Art.normalize(el.detailColorSelect.value);
+        Storage.upsertTournament(tournament);
+        renderDetail();
+        renderTournaments();
+        toast(tournament.color
+            ? 'Color del torneo: ' + Art.label(tournament.color)
+            : 'Torneo sin identidad de color', 'success');
+    }
+
+    // Tarjetas de la Galeria arcana (una por identidad de color).
+    function renderArtGallery() {
+        if (!el.artGallery) return;
+        el.artGallery.innerHTML = '';
+        Art.list().forEach((color) => {
+            const card = document.createElement('article');
+            card.className = 'art-card';
+            card.style.setProperty('--accent', color.accent);
+
+            const frame = document.createElement('div');
+            frame.className = 'art-card-frame';
+            Art.paint(frame, color.key, { alt: color.name + ' · ' + color.arch });
+            card.appendChild(frame);
+
+            const body = document.createElement('div');
+            body.className = 'art-card-body';
+
+            const title = document.createElement('strong');
+            title.textContent = color.name;
+            const arch = document.createElement('small');
+            arch.textContent = color.arch;
+            body.appendChild(title);
+            body.appendChild(arch);
+
+            const actions = document.createElement('div');
+            actions.className = 'art-card-actions';
+            const upload = document.createElement('button');
+            upload.type = 'button';
+            upload.className = 'btn ghost small';
+            upload.dataset.artUpload = color.key;
+            upload.textContent = Art.hasCustom(color.key) ? '📷 Cambiar' : '📷 Subir arte';
+            actions.appendChild(upload);
+            if (Art.hasCustom(color.key)) {
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'btn ghost small';
+                remove.dataset.artClear = color.key;
+                remove.textContent = '✖ Quitar';
+                actions.appendChild(remove);
+            }
+            body.appendChild(actions);
+            card.appendChild(body);
+            el.artGallery.appendChild(card);
+        });
+    }
+
+    // Repinta todo lo que muestra arte: galeria, lista y detalle abierto.
+    function refreshArtViews() {
+        renderArtGallery();
+        renderTournaments();
+        if (currentTournamentId) renderDetail();
+    }
+
+    function onArtGalleryClick(event) {
+        const upload = event.target.closest('[data-art-upload]');
+        if (upload) {
+            pendingArtColor = upload.dataset.artUpload;
+            if (!el.artFileInput) return;
+            el.artFileInput.value = '';
+            el.artFileInput.click();
+            return;
+        }
+        const remove = event.target.closest('[data-art-clear]');
+        if (!remove) return;
+        const key = remove.dataset.artClear;
+        try {
+            Art.clear(key);
+        } catch (err) {
+            toast((err && err.message) || 'No se pudo quitar la imagen', 'error');
+            return;
+        }
+        refreshArtViews();
+        toast('Arte de ' + Art.shortLabel(key) + ' restaurado', 'success');
+    }
+
+    function onArtFileChosen() {
+        const file = (el.artFileInput && el.artFileInput.files)
+            ? el.artFileInput.files[0] : null;
+        const key = pendingArtColor;
+        pendingArtColor = '';
+        if (!file || !key) return;
+        Art.setFromFile(key, file)
+            .then(() => {
+                refreshArtViews();
+                toast('Arte de ' + Art.shortLabel(key) + ' actualizado', 'success');
+            })
+            .catch((err) => {
+                toast((err && err.message) || 'No se pudo cargar la imagen', 'error');
+            });
+    }
+
+    // Pinta el arte del torneo como fondo de la cabecera del detalle.
+    function paintDetailBanner(tournament) {
+        if (!el.detailHead) return;
+        const color = Art.normalize(tournament.color);
+        Art.applyAccent(el.detailHead, color);
+
+        if (el.detailBanner) {
+            el.detailBanner.hidden = !color;
+            if (color) {
+                Art.paint(el.detailBanner, color, { alt: '', eager: true });
+            } else {
+                el.detailBanner.innerHTML = '';
+            }
+        }
+
+        if (el.detailColorTag) {
+            el.detailColorTag.hidden = !color;
+            if (color) {
+                el.detailColorTag.textContent = Art.label(color);
+                el.detailColorTag.style.setProperty('--accent', Art.meta(color).accent);
+            }
+        }
+
+        if (el.detailColorSelect) {
+            el.detailColorSelect.value = color;
+        }
     }
 
     // Aplica al cronometro los minutos configurados en el torneo: refleja el
@@ -241,14 +658,14 @@ const App = (() => {
         const tournament = Storage.getTournament(currentTournamentId);
         if (!tournament) return;
         if (tournament.playoff || tournament.status === 'closed') {
-            alert('No puedes cambiar la configuración: la fase suiza ya está cerrada.');
+            toast('No puedes cambiar la configuración: la fase suiza ya está cerrada.', 'error');
             return;
         }
         const newRounds = Swiss.normalizeRoundCount(el.configRoundCount.value);
         // No permitir fijar menos rondas de las ya generadas.
         if (newRounds && newRounds < tournament.rounds.length) {
-            alert('No puedes fijar menos rondas de las ya generadas (' +
-                tournament.rounds.length + ').');
+            toast('No puedes fijar menos rondas de las ya generadas (' +
+                tournament.rounds.length + ').', 'error');
             return;
         }
         tournament.roundCount = newRounds;
@@ -258,6 +675,7 @@ const App = (() => {
         // Refleja el tiempo de ronda configurado en el cronometro (si esta parado).
         syncTimerFromConfig(tournament.roundMinutes);
         renderDetail();
+        toast('Configuración guardada', 'success');
     }
 
     function onAddPlayer(event) {
@@ -266,7 +684,7 @@ const App = (() => {
         if (!tournament) return;
         const player = Swiss.addPlayer(tournament, el.playerName.value);
         if (!player) {
-            alert('Nombre vacío o jugador ya inscrito.');
+            toast('Nombre vacío o jugador ya inscrito.', 'error');
             return;
         }
         Storage.upsertTournament(tournament);
@@ -275,6 +693,7 @@ const App = (() => {
         renderDetail();
         refreshKnownPlayers();
         updatePlayerCount();
+        toast(player.name + ' inscrito', 'success');
     }
 
     function onGenerateRound() {
@@ -285,11 +704,8 @@ const App = (() => {
         const last = tournament.rounds[tournament.rounds.length - 1];
         if (last && !Swiss.isRoundComplete(last)) {
             const pend = Swiss.pendingCount(last);
-            alert('No puedes generar la siguiente ronda todavía.\n\n' +
-                'La Ronda ' + last.number + ' tiene ' + pend +
-                ' resultado(s) sin introducir. En el sistema suizo los emparejamientos ' +
-                'dependen de los resultados de la ronda anterior: introduce todos los ' +
-                'resultados y vuelve a intentarlo.');
+            toast('Faltan ' + pend + ' resultado(s) de la Ronda ' + last.number +
+                '. En suizo los emparejamientos dependen de la ronda anterior.', 'error');
             return;
         }
 
@@ -297,17 +713,15 @@ const App = (() => {
         if (Swiss.isScheduleComplete(tournament)) {
             const planned = Swiss.plannedRounds(tournament);
             const top = Swiss.plannedTop(tournament);
-            alert('Ya has generado todas las rondas previstas (' + planned + ').\n\n' +
-                'Si has cerrado las inscripciones, pulsa «Cerrar suiza y generar Top' +
-                (top ? ' ' + top : '') + '» para pasar a la eliminatoria.\n' +
-                'Si necesitas alguna ronda más, aumenta el número de rondas en ' +
-                '«Configuración de rondas y Top».');
+            toast('Ya has generado todas las rondas previstas (' + planned + '). ' +
+                (top ? 'Cierra la suiza para generar el Top ' + top + '.'
+                     : 'Cierra la fase suiza para finalizar el torneo.'), 'error');
             return;
         }
 
         const round = Swiss.generateRound(tournament);
         if (!round) {
-            alert('Necesitas al menos 2 jugadores activos para generar una ronda.');
+            toast('Necesitas al menos 2 jugadores activos para generar una ronda.', 'error');
             return;
         }
         Storage.upsertTournament(tournament);
@@ -315,14 +729,14 @@ const App = (() => {
         // Al iniciar la ronda, arranca automaticamente el cronometro con el
         // tiempo de ronda configurado (y lo reinicia si ya estaba corriendo).
         startRoundTimer(Swiss.plannedMinutes(tournament));
+        toast('Ronda ' + round.number + ' generada', 'success');
     }
 
-    function onUndoRound() {
+    async function onUndoRound() {
         const tournament = Storage.getTournament(currentTournamentId);
         if (!tournament) return;
         if (tournament.playoff) {
-            alert('La fase suiza ya está cerrada. Usa «Deshacer última ronda Top» ' +
-                'si necesitas corregir la eliminatoria.');
+            toast('La fase suiza ya está cerrada. Usa «Deshacer última ronda Top».', 'error');
             return;
         }
         const last = tournament.rounds[tournament.rounds.length - 1];
@@ -332,42 +746,61 @@ const App = (() => {
             ? '\n\n⚠️ La Ronda ' + last.number + ' tiene ' + pend +
               ' resultado(s) sin introducir que también se perderán.'
             : '';
-        if (!confirm('¿Deshacer la Ronda ' + last.number + '?\n\n' +
-            'Se eliminarán sus ' + Swiss.playableCount(last) + ' mesa(s) y todos sus ' +
-            'resultados para que puedas volver a introducirlos.' + extra)) return;
+        const ok = await askConfirm({
+            title: '¿Deshacer la Ronda ' + last.number + '?',
+            message: 'Se eliminarán sus ' + Swiss.playableCount(last) + ' mesa(s) y todos sus ' +
+                'resultados para que puedas volver a introducirlos.' + extra,
+            okLabel: 'Deshacer ronda',
+        });
+        if (!ok) return;
+        const roundNumber = last.number;
         const removed = Swiss.undoLastRound(tournament);
         if (!removed) {
-            alert('No se pudo deshacer la ronda.');
+            toast('No se pudo deshacer la ronda.', 'error');
             return;
         }
         Storage.upsertTournament(tournament);
         renderDetail();
+        toast('Ronda ' + roundNumber + ' eliminada', 'success');
     }
 
-    function onUndoPlayoffRound() {
+    async function onUndoPlayoffRound() {
         const tournament = Storage.getTournament(currentTournamentId);
         if (!tournament || !tournament.playoff) return;
         const p = tournament.playoff;
         const last = p.rounds[p.rounds.length - 1];
         if (!last) return;
-        if (!confirm('¿Deshacer la ronda «' + last.name + '» de la eliminación?\n\n' +
-            'Se eliminarán sus ' + last.matches.length +
-            ' partido(s) y sus resultados.')) return;
+        const ok = await askConfirm({
+            title: '¿Deshacer «' + last.name + '»?',
+            message: 'Se eliminarán sus ' + last.matches.length +
+                ' partido(s) y sus resultados.',
+            okLabel: 'Deshacer ronda',
+        });
+        if (!ok) return;
         const removed = Swiss.undoLastPlayoffRound(tournament);
         if (!removed) {
-            alert('No se pudo deshacer la ronda.');
+            toast('No se pudo deshacer la ronda.', 'error');
             return;
         }
         Storage.upsertTournament(tournament);
         renderDetail();
+        toast('Ronda «' + last.name + '» eliminada', 'success');
     }
 
-    function onDeleteTournament() {
-        if (!confirm('¿Eliminar este torneo definitivamente?')) return;
+    async function onDeleteTournament() {
+        const tournament = Storage.getTournament(currentTournamentId);
+        const ok = await askConfirm({
+            title: '¿Eliminar el torneo?',
+            message: 'Se borrará definitivamente «' + (tournament ? tournament.name : 'este torneo') +
+                '» con sus jugadores, rondas y resultados.',
+            okLabel: 'Eliminar torneo',
+        });
+        if (!ok) return;
         Storage.deleteTournament(currentTournamentId);
         currentTournamentId = null;
         showTournamentList();
         renderTournaments();
+        toast('Torneo eliminado', 'success');
     }
 
     function onExport() {
@@ -379,6 +812,7 @@ const App = (() => {
         a.download = 'torneos-magic-datos.json';
         a.click();
         URL.revokeObjectURL(url);
+        toast('Datos exportados a torneos-magic-datos.json', 'success');
     }
 
     function onImport(event) {
@@ -391,9 +825,9 @@ const App = (() => {
                 renderTournaments();
                 refreshKnownPlayers();
                 updatePlayerCount();
-                alert('Datos importados correctamente.');
+                toast('Datos importados correctamente', 'success');
             } catch (err) {
-                alert('No se pudo importar: ' + err.message);
+                toast('No se pudo importar: ' + err.message, 'error');
             }
         };
         reader.readAsText(file);
@@ -407,12 +841,25 @@ const App = (() => {
         const tournaments = Storage.getTournaments();
         el.tournamentList.innerHTML = '';
         el.emptyTournaments.hidden = tournaments.length > 0;
+        if (el.tournamentCount) {
+            el.tournamentCount.textContent = tournaments.length === 1
+                ? '1 torneo' : tournaments.length + ' torneos';
+        }
 
         tournaments
             .slice()
             .reverse()
             .forEach((t) => {
                 const li = document.createElement('li');
+                const color = Art.normalize(t.color);
+                Art.applyAccent(li, color);
+                if (color) li.classList.add('has-color');
+
+                const art = document.createElement('div');
+                art.className = 'tournament-art';
+                Art.paint(art, color, { alt: '', symbol: false });
+                art.hidden = !color;
+                art.addEventListener('click', () => openTournament(t.id));
 
                 const meta = document.createElement('div');
                 meta.className = 'meta';
@@ -421,12 +868,18 @@ const App = (() => {
                 const planBits = [];
                 if (planned) planBits.push(planned + ' rondas');
                 if (top) planBits.push('Top ' + top);
+                const active = t.players.filter((p) => !p.dropped).length;
+                const champion = t.playoff && t.playoff.championId
+                    ? t.players.find((p) => p.id === t.playoff.championId)
+                    : null;
                 meta.innerHTML =
                     '<strong>' + escapeHtml(t.name) + '</strong>' +
-                    '<small>' + escapeHtml(t.date || 'sin fecha') + ' · ' +
+                    '<small>' + escapeHtml(formatDate(t.date)) + ' · ' +
                     escapeHtml(t.location || 'sin lugar') + ' · ' +
-                    t.players.length + ' jugadores' +
+                    (color ? escapeHtml(Art.shortLabel(color)) + ' · ' : '') +
+                    active + '/' + t.players.length + ' jugadores' +
                     (planBits.length ? ' · ' + planBits.join(' · ') : '') +
+                    (champion ? ' · 🏆 ' + escapeHtml(champion.name) : '') +
                     '</small>';
                 meta.addEventListener('click', () => openTournament(t.id));
 
@@ -437,13 +890,20 @@ const App = (() => {
                 const del = document.createElement('button');
                 del.className = 'btn danger small';
                 del.textContent = 'Eliminar';
-                del.addEventListener('click', () => {
-                    if (confirm('¿Eliminar "' + t.name + '"?')) {
-                        Storage.deleteTournament(t.id);
-                        renderTournaments();
-                    }
+                del.addEventListener('click', async () => {
+                    const ok = await askConfirm({
+                        title: '¿Eliminar el torneo?',
+                        message: 'Se borrará «' + t.name + '» con sus ' + t.players.length +
+                            ' jugador(es), ' + t.rounds.length + ' ronda(s) y todos sus resultados.',
+                        okLabel: 'Eliminar',
+                    });
+                    if (!ok) return;
+                    Storage.deleteTournament(t.id);
+                    renderTournaments();
+                    toast('Torneo eliminado', 'success');
                 });
 
+                li.appendChild(art);
                 li.appendChild(meta);
                 li.appendChild(badge);
                 li.appendChild(del);
@@ -454,17 +914,49 @@ const App = (() => {
     // ----------------------------------------------------------------
     // NAVEGACION
     // ----------------------------------------------------------------
+    // Muestra la seccion pedida ('tournaments' o 'table') y la recuerda. En
+    // torneos se respeta si hay un torneo abierto (detalle) o la lista.
+    function showSection(section) {
+        const isTable = section === 'table';
+        if (el.viewTable) el.viewTable.hidden = !isTable;
+        if (isTable) {
+            el.viewTournaments.hidden = true;
+            el.viewDetail.hidden = true;
+        } else {
+            el.viewTournaments.hidden = !!currentTournamentId;
+            el.viewDetail.hidden = !currentTournamentId;
+        }
+        if (el.tabTournaments) {
+            el.tabTournaments.classList.toggle('is-active', !isTable);
+            el.tabTournaments.setAttribute('aria-selected', isTable ? 'false' : 'true');
+        }
+        if (el.tabTable) {
+            el.tabTable.classList.toggle('is-active', isTable);
+            el.tabTable.setAttribute('aria-selected', isTable ? 'true' : 'false');
+        }
+        try {
+            localStorage.setItem(VIEW_KEY, isTable ? 'table' : 'tournaments');
+        } catch (err) {
+            // Sin almacenamiento disponible: la seccion solo dura esta visita.
+        }
+        if (isTable) {
+            closeSharePanel();
+            if (typeof Table !== 'undefined') Table.refresh();
+        }
+        if (typeof window !== 'undefined' && window.scrollTo) window.scrollTo(0, 0);
+    }
+
     function openTournament(id) {
         currentTournamentId = id;
-        el.viewTournaments.hidden = true;
-        el.viewDetail.hidden = false;
+        closeSharePanel();
+        showSection('tournaments');
         renderDetail();
     }
 
     function showTournamentList() {
         currentTournamentId = null;
-        el.viewDetail.hidden = true;
-        el.viewTournaments.hidden = false;
+        closeSharePanel();
+        showSection('tournaments');
     }
 
     // ----------------------------------------------------------------
@@ -478,8 +970,15 @@ const App = (() => {
         }
 
         el.detailTitle.textContent =
-            tournament.name + ' · ' + (tournament.date || 'sin fecha') +
+            tournament.name + ' · ' + formatDate(tournament.date || '') +
             ' · ' + (tournament.location || 'sin lugar');
+
+        if (el.detailStatus) {
+            el.detailStatus.className = 'badge ' + tournament.status;
+            el.detailStatus.textContent = statusLabel(tournament.status);
+        }
+
+        paintDetailBanner(tournament);
 
         renderPlayers(tournament);
         renderRounds(tournament);
@@ -487,6 +986,7 @@ const App = (() => {
         renderPlayoff(tournament);
         renderRoundStatus(tournament);
         renderConfig(tournament);
+        renderAwards(tournament);
     }
 
     // Rellena el panel de configuracion (rondas planificadas y Top) y lo bloquea
@@ -513,8 +1013,11 @@ const App = (() => {
             el.configHint.textContent = tournament.playoff
                 ? 'Fase suiza cerrada: la configuración ya no se puede modificar.'
                 : 'Torneo finalizado sin eliminatoria. Usa «Deshacer última ronda» para reabrirlo.';
+            if (el.closeSwissButton) el.closeSwissButton.disabled = true;
+            if (el.closeTopSize) el.closeTopSize.hidden = true;
             return;
         }
+        if (el.closeSwissButton) el.closeSwissButton.disabled = false;
         const parts = [];
         parts.push('Rondas generadas: ' + tournament.rounds.length +
             (planned ? ' de ' + planned : ' (sin límite definido)'));
@@ -610,6 +1113,13 @@ const App = (() => {
         el.playerList.innerHTML = '';
         el.emptyPlayers.hidden = tournament.players.length > 0;
 
+        if (el.playerBadge) {
+            const active = tournament.players.filter((p) => !p.dropped).length;
+            const dropped = tournament.players.length - active;
+            el.playerBadge.textContent = active + (active === 1 ? ' activo' : ' activos') +
+                (dropped ? ' · ' + dropped + ' retirado' + (dropped === 1 ? '' : 's') : '');
+        }
+
         tournament.players.forEach((player) => {
             const li = document.createElement('li');
             if (player.dropped) li.classList.add('dropped');
@@ -625,6 +1135,8 @@ const App = (() => {
                 player.dropped = !player.dropped;
                 Storage.upsertTournament(tournament);
                 renderDetail();
+                toast(player.name + (player.dropped ? ' retirado del torneo' : ' reactivado'),
+                    player.dropped ? 'info' : 'success');
             });
 
             const remove = document.createElement('button');
@@ -655,6 +1167,14 @@ const App = (() => {
     function renderRounds(tournament) {
         el.roundsContainer.innerHTML = '';
 
+        if (el.roundsChip) {
+            const total = tournament.rounds.length;
+            const planned = Swiss.plannedRounds(tournament);
+            el.roundsChip.textContent = total
+                ? 'Ronda ' + total + (planned ? ' de ' + planned : '')
+                : 'Sin rondas';
+        }
+
         if (tournament.rounds.length === 0) {
             const p = document.createElement('p');
             p.className = 'empty';
@@ -680,32 +1200,53 @@ const App = (() => {
             details.appendChild(summary);
 
             round.pairings.forEach((pairing) => {
+                const isBye = pairing.p2Id === null;
                 const row = document.createElement('div');
-                row.className = 'pairing' + (pairing.p2Id === null ? ' bye' : '');
+                row.className = 'pairing' + (isBye ? ' bye' : '') +
+                    (!isBye && !pairing.reported ? ' pending' : '');
 
-                const tableNo = document.createElement('span');
-                tableNo.className = 'table-no';
-                tableNo.textContent = 'Mesa ' + pairing.table;
-                row.appendChild(tableNo);
-
-                const players = document.createElement('div');
-                players.className = 'players';
-                if (pairing.p2Id === null) {
-                    players.innerHTML =
-                        '<span class="names">' +
-                        escapeHtml(playerName(tournament, pairing.p1Id)) +
-                        '</span> <span class="vs">— BYE (victoria automática)</span>';
-                } else {
-                    players.innerHTML =
-                        '<span class="names">' + escapeHtml(playerName(tournament, pairing.p1Id)) +
-                        '</span><span class="vs">vs</span><span class="names">' +
-                        escapeHtml(playerName(tournament, pairing.p2Id)) + '</span>';
+                if (isBye) {
+                    // Descanso: no hay rival ni resultado que anotar.
+                    row.appendChild(buildPairingHead('Mesa ' + pairing.table,
+                        'BYE · victoria automática', 'is-bye'));
+                    row.appendChild(buildPairingLine(
+                        playerName(tournament, pairing.p1Id),
+                        'descansa esta ronda',
+                        buildStaticScore('BYE')
+                    ));
+                    details.appendChild(row);
+                    return;
                 }
-                row.appendChild(players);
 
-                if (pairing.p2Id !== null) {
-                    row.appendChild(buildResultButtons(tournament, round.number, pairing));
-                }
+                const p1 = playerName(tournament, pairing.p1Id);
+                const p2 = playerName(tournament, pairing.p2Id);
+
+                const clearBtn = buildClearButton(!pairing.reported,
+                    'Borrar el resultado y dejarlo pendiente', () => {
+                        Swiss.clearResult(tournament, round.number, pairing.table);
+                        Storage.upsertTournament(tournament);
+                        renderDetail();
+                    });
+
+                // Fila: P1 a la izquierda, desplegable en el centro y P2 a la derecha.
+                row.appendChild(buildPairingHead(
+                    'Mesa ' + pairing.table,
+                    pairing.reported ? '✅ ' + (pairing.score || 'guardado') : '⏳ pendiente',
+                    pairing.reported ? 'is-done' : 'is-pending',
+                    clearBtn
+                ));
+                row.appendChild(buildPairingLine(p1, p2,
+                    buildScoreSelect(resultChoices(p1, p2), pairing.score, (value) => {
+                        if (value) {
+                            Swiss.setResult(tournament, round.number, pairing.table, value);
+                        } else {
+                            Swiss.clearResult(tournament, round.number, pairing.table);
+                        }
+                        Storage.upsertTournament(tournament);
+                        renderDetail();
+                    }, 'Resultado de ' + p1 + ' contra ' + p2)
+                ));
+
                 details.appendChild(row);
             });
 
@@ -713,81 +1254,128 @@ const App = (() => {
         });
     }
 
-    // Definicion de todos los resultados posibles de una ronda (Bo3),
-    // agrupados y ordenados por ganador. Cada grupo lleva una etiqueta.
-    function resultOptions(p1, p2) {
-        return [
-            {
-                label: p1 + ' gana',
-                options: [
-                    { value: '2-0', title: p1 + ' gana 2-0' },
-                    { value: '2-1', title: p1 + ' gana 2-1' },
-                    { value: '1-0', title: p1 + ' gana 1-0 (rival concede / no se presenta)' },
-                ],
-            },
-            {
-                label: 'Empate',
-                options: [
-                    { value: '1-1', title: 'Empate 1-1 (por tiempo / tablas)' },
-                ],
-            },
-            {
-                label: p2 + ' gana',
-                options: [
-                    { value: '0-1', title: p2 + ' gana 1-0 (rival concede / no se presenta)' },
-                    { value: '0-2', title: p2 + ' gana 2-0' },
-                    { value: '1-2', title: p2 + ' gana 2-1' },
-                ],
-            },
-        ];
+    // Marcadores de un Bo3 en el orden del desplegable: primero los que no
+    // pierde el jugador 1 (incluidos los empates) y luego los del jugador 2.
+    const SCORE_VALUES = ['0-0', '1-0', '1-1', '2-1', '2-0', '0-1', '1-2', '0-2'];
+
+    // Opciones del desplegable central. `includeDraws` se desactiva en la
+    // eliminatoria directa, donde un empate no clasifica a nadie.
+    function resultChoices(p1, p2, includeDraws) {
+        const withDraws = includeDraws !== false;
+        return SCORE_VALUES
+            .filter((value) => withDraws || (value !== '0-0' && value !== '1-1'))
+            .map((value) => {
+                const games = value.split('-').map((n) => parseInt(n, 10));
+                if (games[0] === games[1]) {
+                    return {
+                        value: value,
+                        text: value + ' · tablas',
+                        title: 'Tablas ' + value + ' (' + p1 + ' contra ' + p2 + ')',
+                    };
+                }
+                const p1Wins = games[0] > games[1];
+                return {
+                    value: value,
+                    text: value + ' · gana ' + (p1Wins ? 'P1' : 'P2'),
+                    title: (p1Wins ? p1 : p2) + ' gana ' + value,
+                };
+            });
     }
 
-    function buildResultButtons(tournament, roundNumber, pairing) {
-        const wrap = document.createElement('div');
-        wrap.className = 'result-buttons';
+    // Cabecera de la mesa: numero, estado del resultado y boton de deshacer.
+    function buildPairingHead(tableLabel, stateText, stateClass, extra) {
+        const head = document.createElement('div');
+        head.className = 'pairing-head';
 
-        const p1 = playerName(tournament, pairing.p1Id);
-        const p2 = playerName(tournament, pairing.p2Id);
+        const tableNo = document.createElement('span');
+        tableNo.className = 'table-no';
+        tableNo.textContent = tableLabel;
+        head.appendChild(tableNo);
 
-        resultOptions(p1, p2).forEach((group) => {
-            const groupEl = document.createElement('div');
-            groupEl.className = 'result-group';
+        const state = document.createElement('span');
+        state.className = 'pairing-state' + (stateClass ? ' ' + stateClass : '');
+        state.textContent = stateText;
+        head.appendChild(state);
 
-            const label = document.createElement('span');
-            label.className = 'result-group-label';
-            label.textContent = group.label;
-            groupEl.appendChild(label);
+        if (extra) head.appendChild(extra);
+        return head;
+    }
 
-            group.options.forEach((opt) => {
-                const btn = document.createElement('button');
-                btn.className = 'btn ghost small score-btn';
-                btn.textContent = opt.value;
-                btn.title = opt.title;
-                if (pairing.score === opt.value) btn.classList.add('active');
-                btn.addEventListener('click', () => {
-                    Swiss.setResult(tournament, roundNumber, pairing.table, opt.value);
-                    Storage.upsertTournament(tournament);
-                    renderDetail();
-                });
-                groupEl.appendChild(btn);
-            });
-            wrap.appendChild(groupEl);
+    // Linea del marcador: P1 | centro (desplegable o texto) | P2.
+    function buildPairingLine(p1Text, p2Text, middle, opts) {
+        const options = opts || {};
+        const line = document.createElement('div');
+        line.className = 'pairing-line';
+
+        const left = document.createElement('span');
+        left.className = 'names p1' + (options.winner === 'p1' ? ' winner' : '');
+        left.textContent = p1Text;
+        if (options.title1) left.title = options.title1;
+        line.appendChild(left);
+
+        line.appendChild(middle);
+
+        const right = document.createElement('span');
+        right.className = 'names p2' + (options.winner === 'p2' ? ' winner' : '');
+        right.textContent = p2Text;
+        if (options.title2) right.title = options.title2;
+        line.appendChild(right);
+
+        return line;
+    }
+
+    // Desplegable con todos los marcadores posibles (opcion vacia = pendiente).
+    function buildScoreSelect(options, current, onPick, ariaLabel) {
+        const select = document.createElement('select');
+        select.className = 'score-select';
+        select.setAttribute('aria-label', ariaLabel);
+        select.title = ariaLabel + ' · elige el marcador';
+
+        const pending = document.createElement('option');
+        pending.value = '';
+        pending.textContent = '—';
+        pending.title = 'Sin resultado (pendiente)';
+        select.appendChild(pending);
+
+        options.forEach((opt) => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.text;
+            option.title = opt.title;
+            select.appendChild(option);
         });
 
-        // Boton para deshacer / borrar el resultado introducido.
-        const clearBtn = document.createElement('button');
-        clearBtn.className = 'btn ghost small score-btn clear-btn';
-        clearBtn.textContent = '✖ Deshacer';
-        clearBtn.title = 'Borrar el resultado y dejarlo pendiente';
-        clearBtn.disabled = !pairing.reported;
-        clearBtn.addEventListener('click', () => {
-            Swiss.clearResult(tournament, roundNumber, pairing.table);
-            Storage.upsertTournament(tournament);
-            renderDetail();
-        });
-        wrap.appendChild(clearBtn);
+        // Marcadores antiguos (p. ej. Bo3 de 3 partes) se muestran sin perderlos.
+        if (current && !options.some((opt) => opt.value === current)) {
+            const legacy = document.createElement('option');
+            legacy.value = current;
+            legacy.textContent = current + ' · registro antiguo';
+            select.appendChild(legacy);
+        }
 
-        return wrap;
+        select.value = current || '';
+        select.classList.toggle('is-reported', !!current);
+        select.addEventListener('change', () => onPick(select.value));
+        return select;
+    }
+
+    // Hueco central sin desplegable (BYE, cruce pendiente de rival...).
+    function buildStaticScore(text) {
+        const box = document.createElement('span');
+        box.className = 'score-static';
+        box.textContent = text;
+        return box;
+    }
+
+    function buildClearButton(disabled, title, onClick) {
+        const btn = document.createElement('button');
+        btn.className = 'btn ghost small clear-btn';
+        btn.type = 'button';
+        btn.textContent = '✖ Deshacer';
+        btn.title = title;
+        btn.disabled = disabled;
+        btn.addEventListener('click', onClick);
+        return btn;
     }
 
     function renderStandings(tournament) {
@@ -821,6 +1409,12 @@ const App = (() => {
         const p = tournament.playoff;
         el.playoffPanel.hidden = !p;
 
+        if (el.playoffChip) {
+            el.playoffChip.textContent = p
+                ? 'Top ' + p.size + (p.championId ? ' · finalizado' : ' · en juego')
+                : 'Top';
+        }
+
         // Boton de deshacer la ultima ronda del Top (solo si hay eliminacion).
         if (el.undoPlayoffButton) {
             el.undoPlayoffButton.disabled = !p || p.rounds.length === 0;
@@ -839,32 +1433,54 @@ const App = (() => {
             box.appendChild(head);
 
             round.matches.forEach((match) => {
+                const ready = !!(match.p1Id && match.p2Id);
                 const row = document.createElement('div');
-                row.className = 'pairing';
+                row.className = 'pairing' + (ready && !match.winnerId ? ' pending' : '');
 
-                const tableNo = document.createElement('span');
-                tableNo.className = 'table-no';
-                tableNo.textContent = 'M' + match.slot;
-                row.appendChild(tableNo);
+                const p1 = seedName(tournament, match.p1Id, match.p1Seed);
+                const p2 = seedName(tournament, match.p2Id, match.p2Seed);
+                const winner = match.winnerId === match.p1Id ? 'p1'
+                    : (match.winnerId === match.p2Id ? 'p2' : '');
 
-                const players = document.createElement('div');
-                players.className = 'players';
-                players.innerHTML =
-                    '<span class="names' + (match.winnerId === match.p1Id ? ' winner' : '') + '">' +
-                    escapeHtml(seedName(tournament, match.p1Id, match.p1Seed)) +
-                    '</span><span class="vs">vs</span><span class="names' +
-                    (match.winnerId === match.p2Id ? ' winner' : '') + '">' +
-                    escapeHtml(seedName(tournament, match.p2Id, match.p2Seed)) + '</span>';
-                row.appendChild(players);
-
-                if (match.p1Id && match.p2Id) {
-                    row.appendChild(buildPlayoffButtons(tournament, roundIndex, match));
-                } else {
-                    const wait = document.createElement('span');
-                    wait.className = 'empty';
-                    wait.textContent = 'pendiente';
-                    row.appendChild(wait);
+                if (!ready) {
+                    row.appendChild(buildPairingHead('M' + match.slot,
+                        'esperando rivales', 'is-pending'));
+                    row.appendChild(buildPairingLine(p1, p2, buildStaticScore('—')));
+                    box.appendChild(row);
+                    return;
                 }
+
+                const clearBtn = buildClearButton(!match.score,
+                    'Borrar el resultado de este cruce', () => {
+                        Swiss.clearPlayoffResult(tournament, roundIndex, match.slot);
+                        Storage.upsertTournament(tournament);
+                        renderDetail();
+                    });
+
+                row.appendChild(buildPairingHead('M' + match.slot,
+                    match.winnerId ? '✅ ' + (match.score || 'guardado') : '⏳ pendiente',
+                    match.winnerId ? 'is-done' : 'is-pending',
+                    clearBtn));
+                // En eliminatoria no hay tablas: solo marcadores con ganador.
+                row.appendChild(buildPairingLine(p1, p2,
+                    buildScoreSelect(resultChoices(p1, p2, false), match.score, (value) => {
+                        if (!value) {
+                            Swiss.clearPlayoffResult(tournament, roundIndex, match.slot);
+                            Storage.upsertTournament(tournament);
+                            renderDetail();
+                            return;
+                        }
+                        Swiss.setPlayoffResult(tournament, roundIndex, match.slot, value);
+                        const result = Swiss.advancePlayoff(tournament);
+                        Storage.upsertTournament(tournament);
+                        renderDetail();
+                        if (result && result.champion) {
+                            toast('🏆 ¡Campeón: ' +
+                                playerName(tournament, tournament.playoff.championId) + '!', 'success');
+                            scrollToAwards();
+                        }
+                    }, 'Resultado de ' + p1 + ' contra ' + p2),
+                    { winner: winner }));
                 box.appendChild(row);
             });
 
@@ -879,55 +1495,6 @@ const App = (() => {
         }
     }
 
-    function buildPlayoffButtons(tournament, roundIndex, match) {
-        const wrap = document.createElement('div');
-        wrap.className = 'result-buttons';
-
-        const p1 = playerName(tournament, match.p1Id);
-        const p2 = playerName(tournament, match.p2Id);
-
-        resultOptions(p1, p2).forEach((group) => {
-            const groupEl = document.createElement('div');
-            groupEl.className = 'result-group';
-
-            const label = document.createElement('span');
-            label.className = 'result-group-label';
-            label.textContent = group.label;
-            groupEl.appendChild(label);
-
-            group.options.forEach((opt) => {
-                const btn = document.createElement('button');
-                btn.className = 'btn ghost small score-btn';
-                btn.textContent = opt.value;
-                btn.title = opt.title;
-                if (match.score === opt.value) btn.classList.add('active');
-                btn.addEventListener('click', () => {
-                    Swiss.setPlayoffResult(tournament, roundIndex, match.slot, opt.value);
-                    Swiss.advancePlayoff(tournament);
-                    Storage.upsertTournament(tournament);
-                    renderDetail();
-                });
-                groupEl.appendChild(btn);
-            });
-            wrap.appendChild(groupEl);
-        });
-
-        // Boton para deshacer el resultado del cruce de eliminatoria.
-        const clearBtn = document.createElement('button');
-        clearBtn.className = 'btn ghost small score-btn clear-btn';
-        clearBtn.textContent = '✖ Deshacer';
-        clearBtn.title = 'Borrar el resultado de este cruce';
-        clearBtn.disabled = !match.score;
-        clearBtn.addEventListener('click', () => {
-            Swiss.clearPlayoffResult(tournament, roundIndex, match.slot);
-            Storage.upsertTournament(tournament);
-            renderDetail();
-        });
-        wrap.appendChild(clearBtn);
-
-        return wrap;
-    }
-
     function seedName(tournament, id, seed) {
         if (!id) return '(pendiente)';
         return (seed ? seed + '. ' : '') + playerName(tournament, id);
@@ -939,11 +1506,11 @@ const App = (() => {
     function onShareRound() {
         const tournament = Storage.getTournament(currentTournamentId);
         if (!tournament || tournament.rounds.length === 0) {
-            alert('Todavía no hay rondas para compartir.');
+            toast('Todavía no hay rondas para compartir.', 'error');
             return;
         }
         const text = Share.roundText(tournament, null, { includeStandings: true });
-        openShareDialog(tournament, 'Ronda ' + tournament.rounds.length,
+        openShare('Ronda ' + tournament.rounds.length,
             [{ heading: 'Emparejamientos', lines: pairLines(tournament) }], text);
     }
 
@@ -951,17 +1518,21 @@ const App = (() => {
         const tournament = Storage.getTournament(currentTournamentId);
         if (!tournament) return;
         const standings = Swiss.calculateStandings(tournament);
-        const lines = standings.map((s, i) =>
-            (i + 1) + 'º ' + s.player.name + ' — ' + s.matchPoints + ' pts');
-        const text = '🏆 ' + tournament.name + '\n━━━ CLASIFICACIÓN ━━━\n' + lines.join('\n');
-        openShareDialog(tournament, 'Clasificación',
-            [{ heading: 'Clasificación', lines: lines }], text);
+        if (!standings.length) {
+            toast('Aún no hay clasificación que compartir.', 'error');
+            return;
+        }
+        const lines = standings.map((s) =>
+            s.rank + 'º  ' + s.player.name + '  —  ' + s.matchPoints +
+            ' pts   OMW ' + fmtPct(s.omw) + ' · GW ' + fmtPct(s.gameWinPct));
+        openShare('Clasificación', [{ heading: 'Clasificación', lines: lines }],
+            Share.standingsOnlyText(tournament));
     }
 
     function onShareBracket() {
         const tournament = Storage.getTournament(currentTournamentId);
         if (!tournament || !tournament.playoff) {
-            alert('No hay eliminatoria generada.');
+            toast('No hay eliminatoria generada.', 'error');
             return;
         }
         const text = Share.bracketText(tournament);
@@ -972,29 +1543,37 @@ const App = (() => {
                 ' vs ' + seedName(tournament, m.p2Id, m.p2Seed) +
                 (m.score ? '  (' + m.score + ')' : '')),
         }));
-        openShareDialog(tournament, 'Eliminación Top ' + tournament.playoff.size, blocks, text);
+        if (tournament.playoff.championId) {
+            blocks.push({
+                heading: 'Campeón',
+                lines: [playerName(tournament, tournament.playoff.championId)],
+            });
+        }
+        openShare('Eliminación Top ' + tournament.playoff.size, blocks, text);
     }
 
     function pairLines(tournament) {
         const round = tournament.rounds[tournament.rounds.length - 1];
         return round.pairings.map((pr) => {
             const p2 = pr.p2Id === null ? '(BYE)' : playerName(tournament, pr.p2Id);
-            return 'Mesa ' + pr.table + '  ' + playerName(tournament, pr.p1Id) + ' vs ' + p2;
+            const score = pr.reported && pr.score ? '   (' + pr.score + ')' : '';
+            return 'Mesa ' + pr.table + '  ' + playerName(tournament, pr.p1Id) +
+                ' vs ' + p2 + score;
         });
     }
 
-    function onCloseSwiss() {
+    async function onCloseSwiss() {
         const tournament = Storage.getTournament(currentTournamentId);
         if (!tournament) return;
         if (tournament.playoff) {
-            alert('La fase suiza ya está cerrada.');
+            toast('La fase suiza ya está cerrada.', 'error');
             return;
         }
         // No se puede cerrar la suiza con partidas pendientes.
         const last = tournament.rounds[tournament.rounds.length - 1];
         if (last && !Swiss.isRoundComplete(last)) {
-            alert('No puedes cerrar la fase suiza todavía.\n\nLa Ronda ' + last.number +
-                ' tiene ' + Swiss.pendingCount(last) + ' resultado(s) sin introducir.');
+            toast('No puedes cerrar la suiza: la Ronda ' + last.number + ' tiene ' +
+                Swiss.pendingCount(last) + ' resultado(s) sin introducir.', 'error');
             return;
         }
 
@@ -1007,138 +1586,375 @@ const App = (() => {
 
         if (!selected) {
             // Sin eliminatoria final: se cierra el torneo como suizo puro.
-            if (!confirm('¿Cerrar la fase suiza y finalizar el torneo (sin Top)?\n\n' +
-                'La clasificación actual quedará como resultado final.')) return;
+            const ok = await askConfirm({
+                title: '¿Cerrar la fase suiza?',
+                message: 'El torneo finalizará sin eliminación: la clasificación actual ' +
+                    'quedará como resultado final.',
+                okLabel: 'Cerrar torneo',
+                danger: false,
+            });
+            if (!ok) return;
             tournament.status = 'closed';
             Storage.upsertTournament(tournament);
             renderDetail();
+            toast('Torneo cerrado. Cartel del campeón listo.', 'success');
+            scrollToAwards();
             return;
         }
 
-        if (!confirm('¿Cerrar la fase suiza y generar el Top ' + selected + '?')) return;
+        const ok = await askConfirm({
+            title: '¿Cerrar la suiza y generar el Top ' + selected + '?',
+            message: 'Los ' + selected + ' mejores de la clasificación pasarán a la ' +
+                'eliminación directa. Podrás deshacer la última ronda del Top si hay ' +
+                'algún error.',
+            okLabel: 'Generar Top ' + selected,
+            danger: false,
+        });
+        if (!ok) return;
+
         const playoff = Swiss.generatePlayoff(tournament, selected);
         if (!playoff) {
-            alert('No hay suficientes jugadores para un Top ' + selected + '.');
+            toast('No hay suficientes jugadores para un Top ' + selected + '.', 'error');
             return;
         }
         Storage.upsertTournament(tournament);
         renderDetail();
+        toast('Top ' + selected + ' generado', 'success');
+        scrollToAwards();
     }
 
     // Dialogo de compartir: copiar texto, abrir WhatsApp, descargar/compartir imagen.
-    function openShareDialog(tournament, title, blocks, text) {
-        const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay';
+    // ----------------------------------------------------------------
+    // COMPARTIR: VISTA PREVIA, IMAGEN Y TEXTO
+    // ----------------------------------------------------------------
+    let shareState = null;  // { title, text, canvas, filename }
+    let awardsState = null; // { canvas, filename }
 
-        const modal = document.createElement('div');
-        modal.className = 'modal';
+    function slug(text) {
+        return String(text || 'cartel')
+            .toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '') || 'cartel';
+    }
 
-        const h = document.createElement('h3');
-        h.textContent = '📤 Compartir: ' + title;
-        modal.appendChild(h);
+    function formatDate(iso) {
+        if (!iso) return 'sin fecha';
+        const parts = String(iso).split('-');
+        if (parts.length !== 3) return iso;
+        return parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
 
-        // Texto de ayuda: flujo pensado para pegar en WhatsApp de escritorio.
-        const help = document.createElement('p');
-        help.className = 'share-help';
-        help.innerHTML = 'Copia el texto y pégalo en tu <strong>grupo de WhatsApp</strong> ' +
-            '(WhatsApp de escritorio: <em>Ctrl+V</em>). También puedes copiar solo una parte ' +
-            'con los botones de abajo.';
-        modal.appendChild(help);
+    function setPreview(container, canvas) {
+        if (!container) return;
+        container.innerHTML = '';
+        canvas.classList.add('poster-canvas');
+        container.appendChild(canvas);
+    }
 
-        const ta = document.createElement('textarea');
-        ta.className = 'share-text';
-        ta.value = text;
-        ta.readOnly = true;
-        ta.title = 'Clic para seleccionar todo y copiar';
-        ta.addEventListener('click', () => ta.select());
-        modal.appendChild(ta);
+    // Genera el cartel y abre el panel de vista previa con sus acciones.
+    function openShare(title, blocks, text) {
+        const tournament = Storage.getTournament(currentTournamentId);
+        if (!tournament) return;
 
-        // Aviso de copiado (feedback visible).
-        const feedback = document.createElement('div');
-        feedback.className = 'share-feedback';
-        feedback.hidden = true;
-        feedback.textContent = '✅ Copiado al portapapeles';
-        modal.appendChild(feedback);
+        const tournamentId = tournament.id;
+        const subtitle = [formatDate(tournament.date), tournament.location]
+            .filter(Boolean).join(' · ');
+        // Evita repetir el titulo como encabezado del primer bloque (sin borrar
+        // las lineas del bloque, solo su encabezado).
+        const cleanBlocks = (blocks || []).map((b) => ({
+            heading: (b.heading && String(b.heading).toLowerCase() === String(title).toLowerCase())
+                ? '' : b.heading,
+            lines: b.lines || [],
+        }));
+        const color = Art.normalize(tournament.color);
 
-        const showFeedback = () => {
-            feedback.hidden = false;
-            clearTimeout(feedback._t);
-            feedback._t = setTimeout(() => (feedback.hidden = true), 1800);
+        // El arte se carga antes de dibujar. Si no hay arte (o no se puede usar
+        // en canvas) el cartel se genera igual con el fondo del tema.
+        Promise.all([Art.posterImage(color), Art.posterSymbol(color)]).then((images) => {
+            if (currentTournamentId !== tournamentId) return;
+            const canvas = Share.renderImage(title, subtitle, cleanBlocks, {
+                art: images[0],
+                symbol: images[1],
+                accent: color ? Art.meta(color).accent : '',
+                colorName: color ? Art.shortLabel(color) : '',
+            });
+
+            shareState = {
+                title: title,
+                text: text,
+                canvas: canvas,
+                filename: 'magic-' + slug(title) + '.png',
+            };
+
+            if (el.shareTitle) el.shareTitle.textContent = 'Compartir · ' + title;
+            setPreview(el.sharePreview, canvas);
+            if (el.shareWhatsapp) el.shareWhatsapp.href = Share.whatsappLink(text);
+            if (el.sharePanel) {
+                el.sharePanel.hidden = false;
+                el.sharePanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            toast('Vista previa lista: cópiala o descárgala', 'info');
+        });
+    }
+
+    function closeSharePanel() {
+        if (el.sharePanel) el.sharePanel.hidden = true;
+        shareState = null;
+    }
+
+    // Copia una imagen PNG al portapapeles. Devuelve una promesa con true/false.
+    function copyImageToClipboard(canvas, filename) {
+        return Share.canvasToBlob(canvas).then((blob) => {
+            if (!blob) return false;
+            if (!navigator.clipboard || typeof ClipboardItem === 'undefined') return false;
+            try {
+                return navigator.clipboard
+                    .write([new ClipboardItem({ 'image/png': blob })])
+                    .then(() => true)
+                    .catch(() => false);
+            } catch (err) {
+                return false;
+            }
+        }).catch(() => false);
+    }
+
+    function downloadCanvas(canvas, filename) {
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = filename || 'cartel.png';
+        link.click();
+    }
+
+    function shareCanvasFile(canvas, filename, title) {
+        Share.canvasToBlob(canvas).then((blob) => {
+            if (!blob) {
+                downloadCanvas(canvas, filename);
+                return;
+            }
+            const file = new File([blob], filename || 'cartel.png', { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({ files: [file], title: title || 'Torneo de Magic' })
+                    .catch(() => { /* el usuario canceló: no hacemos nada */ });
+            } else {
+                downloadCanvas(canvas, filename);
+                toast('Tu navegador no comparte archivos: imagen descargada', 'info');
+            }
+        });
+    }
+
+    function copyShareCanvas() {
+        if (!shareState) return;
+        copyImageToClipboard(shareState.canvas, shareState.filename).then((ok) => {
+            if (ok) {
+                toast('Imagen copiada al portapapeles', 'success');
+            } else {
+                downloadCanvas(shareState.canvas, shareState.filename);
+                toast('No se pudo copiar: imagen descargada', 'info');
+            }
+        });
+    }
+
+    function downloadShareCanvas() {
+        if (!shareState) return;
+        downloadCanvas(shareState.canvas, shareState.filename);
+        toast('Imagen descargada', 'success');
+    }
+
+    function nativeShareCanvas() {
+        if (!shareState) return;
+        shareCanvasFile(shareState.canvas, shareState.filename, shareState.title);
+    }
+
+    // ----------------------------------------------------------------
+    // CARTEL DEL CAMPEÓN
+    // ----------------------------------------------------------------
+    // Prepara los datos del cartel: campeón, finalista y mejor suizo.
+    function buildAwardsInfo(tournament) {
+        const standings = Swiss.calculateStandings(tournament);
+        const p = tournament.playoff;
+        const leader = standings[0] || null;
+        const active = tournament.players.filter((pl) => !pl.dropped).length;
+
+        function statLine(entry) {
+            if (!entry) return null;
+            const record = entry.matchesWon + '-' + entry.matchesLost +
+                (entry.matchesDrawn ? '-' + entry.matchesDrawn : '');
+            return {
+                stat: entry.matchPoints + ' pts',
+                record: record,
+                subline: 'OMW ' + fmtPct(entry.omw) + ' · GW ' + fmtPct(entry.gameWinPct) +
+                    (entry.byeCount ? ' · ' + entry.byeCount + ' bye' : ''),
+            };
+        }
+
+        const info = {
+            tournamentName: tournament.name,
+            chipLabel: 'CAMPEÓN',
+            champion: null,
+            second: null,
+            third: null,
+            emptyText: 'Cierra la fase suiza para generar el cartel.',
+            footer: 'DCI Reporter · ' + APP_VERSION,
         };
 
-        // --- Copiado rápido de cada parte ---
-        const quick = document.createElement('div');
-        quick.className = 'modal-actions';
+        if (p && p.championId) {
+            const championEntry = standings.find((s) => s.player.id === p.championId);
+            const stats = statLine(championEntry);
+            info.chipLabel = 'CAMPEÓN · TOP ' + p.size;
+            info.champion = {
+                name: playerName(tournament, p.championId),
+                stat: stats ? stats.stat + ' en la fase suiza' : '',
+                record: stats ? stats.record : '',
+                subline: stats ? stats.subline : '',
+            };
 
-        const copyPairsBtn = document.createElement('button');
-        copyPairsBtn.className = 'btn ghost';
-        copyPairsBtn.textContent = '📋 Copiar emparejamientos';
-        copyPairsBtn.addEventListener('click', () => {
-            copyToClipboard(Share.pairingsOnlyText(tournament), showFeedback);
+            // Finalista: perdedor de la final (ultima ronda del Top).
+            const lastRound = p.rounds[p.rounds.length - 1];
+            const finalMatch = lastRound && lastRound.matches[0];
+            if (finalMatch && finalMatch.winnerId) {
+                const loserId = finalMatch.winnerId === finalMatch.p1Id
+                    ? finalMatch.p2Id : finalMatch.p1Id;
+                if (loserId) {
+                    const loserStats = statLine(standings.find((s) => s.player.id === loserId));
+                    info.second = {
+                        label: 'Finalista',
+                        name: playerName(tournament, loserId),
+                        detail: finalMatch.score ? 'Final ' + finalMatch.score
+                            : (loserStats ? loserStats.stat : ''),
+                    };
+                }
+            }
+
+            if (leader && leader.player.id !== p.championId) {
+                info.third = {
+                    label: 'Mejor suizo',
+                    name: leader.player.name,
+                    detail: leader.matchPoints + ' pts · OMW ' + fmtPct(leader.omw),
+                };
+            } else {
+                // El campeon ya era el lider suizo: mostramos el 3er clasificado.
+                const third = standings[2];
+                info.third = third ? {
+                    label: '3º clasificado',
+                    name: third.player.name,
+                    detail: third.matchPoints + ' pts · OMW ' + fmtPct(third.omw),
+                } : null;
+            }
+        } else if (p) {
+            // Eliminatoria en juego: mostramos al lider provisional.
+            const stats = statLine(leader);
+            info.chipLabel = 'ELIMINATORIA EN CURSO';
+            info.emptyText = 'La eliminatoria está en juego: el cartel se completa al coronar al campeón.';
+            info.champion = leader ? {
+                name: leader.player.name,
+                stat: 'Líder de la fase suiza',
+                record: stats ? stats.stat : '',
+                subline: stats ? stats.subline : '',
+            } : null;
+        } else if (tournament.status === 'closed') {
+            const stats = statLine(leader);
+            info.chipLabel = 'CAMPEÓN SUIZO';
+            info.champion = leader ? {
+                name: leader.player.name,
+                stat: stats ? stats.stat + ' en la fase suiza' : '',
+                record: stats ? stats.record : '',
+                subline: stats ? stats.subline : '',
+            } : null;
+
+            const second = standings[1];
+            info.second = second ? {
+                label: '2º clasificado',
+                name: second.player.name,
+                detail: second.matchPoints + ' pts · OMW ' + fmtPct(second.omw),
+            } : null;
+
+            const third = standings[2];
+            info.third = third ? {
+                label: '3º clasificado',
+                name: third.player.name,
+                detail: third.matchPoints + ' pts · OMW ' + fmtPct(third.omw),
+            } : null;
+        } else {
+            return null; // torneo en curso: el cartel se genera al cerrar
+        }
+
+        const rounds = tournament.rounds.length;
+        info.meta = [
+            rounds ? rounds + ' ronda' + (rounds === 1 ? '' : 's') + ' suizas' : '',
+            active + ' jugador' + (active === 1 ? '' : 'es'),
+            formatDate(tournament.date),
+            tournament.location || '',
+        ].filter(Boolean).join(' · ');
+
+        return info;
+    }
+
+    // Pinta el cartel del campeon en el panel de premios.
+    function renderAwards(tournament) {
+        if (!el.awardsPanel) return;
+
+        const visible = !!tournament.playoff || tournament.status === 'closed';
+        const info = visible ? buildAwardsInfo(tournament) : null;
+        if (!info || !info.champion) {
+            awardsToken += 1;
+            el.awardsPanel.hidden = true;
+            awardsState = null;
+            return;
+        }
+
+        const token = ++awardsToken;
+        const color = Art.normalize(tournament.color);
+        Promise.all([Art.posterImage(color), Art.posterSymbol(color)]).then((images) => {
+            if (token !== awardsToken) return; // otro cartel mas reciente
+            const canvas = Share.renderChampionsImage(Object.assign({}, info, {
+                art: images[0],
+                symbol: images[1],
+                accent: color ? Art.meta(color).accent : '',
+                colorName: color ? Art.shortLabel(color) : '',
+            }));
+            awardsState = {
+                canvas: canvas,
+                filename: 'magic-campeon-' + slug(info.champion.name) + '.png',
+            };
+
+            el.awardsPanel.hidden = false;
+            setPreview(el.awardsPreview, canvas);
+            if (el.awardsChip) el.awardsChip.textContent = info.chipLabel;
+            if (el.awardsSummary) {
+                el.awardsSummary.innerHTML =
+                    '<strong>' + escapeHtml(info.champion.name) + '</strong> · ' +
+                    escapeHtml(info.chipLabel) + '. ' + escapeHtml(info.meta) + '.';
+            }
         });
+    }
 
-        const copyStandBtn = document.createElement('button');
-        copyStandBtn.className = 'btn ghost';
-        copyStandBtn.textContent = '📊 Copiar clasificación';
-        copyStandBtn.addEventListener('click', () => {
-            copyToClipboard(Share.standingsOnlyText(tournament), showFeedback);
+    function scrollToAwards() {
+        if (!el.awardsPanel || el.awardsPanel.hidden) return;
+        el.awardsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function copyAwardsCanvas() {
+        if (!awardsState) return;
+        copyImageToClipboard(awardsState.canvas, awardsState.filename).then((ok) => {
+            if (ok) {
+                toast('Cartel copiado al portapapeles', 'success');
+            } else {
+                downloadCanvas(awardsState.canvas, awardsState.filename);
+                toast('No se pudo copiar: cartel descargado', 'info');
+            }
         });
+    }
 
-        quick.appendChild(copyPairsBtn);
-        quick.appendChild(copyStandBtn);
-        modal.appendChild(quick);
+    function downloadAwardsCanvas() {
+        if (!awardsState) return;
+        downloadCanvas(awardsState.canvas, awardsState.filename);
+        toast('Cartel descargado', 'success');
+    }
 
-        // --- Acciones principales ---
-        const actions = document.createElement('div');
-        actions.className = 'modal-actions';
-
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'btn primary';
-        copyBtn.textContent = '📋 Copiar todo';
-        copyBtn.addEventListener('click', () => {
-            copyToClipboard(text, () => { showFeedback(); copyBtn.textContent = '✅ Copiado'; });
-            setTimeout(() => (copyBtn.textContent = '📋 Copiar todo'), 1500);
-        });
-
-        const waBtn = document.createElement('button');
-        waBtn.className = 'btn primary';
-        waBtn.textContent = '🟢 Abrir WhatsApp';
-        waBtn.addEventListener('click', () => window.open(Share.whatsappLink(text), '_blank'));
-
-        const imgBtn = document.createElement('button');
-        imgBtn.className = 'btn ghost';
-        imgBtn.textContent = '🖼️ Descargar imagen';
-        imgBtn.addEventListener('click', () => downloadImage(tournament, title, blocks));
-
-        const shareImgBtn = document.createElement('button');
-        shareImgBtn.className = 'btn ghost';
-        shareImgBtn.textContent = '📲 Compartir imagen';
-        shareImgBtn.addEventListener('click', () => shareImage(tournament, title, blocks));
-
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'btn ghost';
-        closeBtn.textContent = 'Cerrar';
-        closeBtn.addEventListener('click', () => overlay.remove());
-
-        actions.appendChild(copyBtn);
-        actions.appendChild(waBtn);
-        actions.appendChild(imgBtn);
-        actions.appendChild(shareImgBtn);
-        actions.appendChild(closeBtn);
-        modal.appendChild(actions);
-
-        overlay.appendChild(modal);
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) overlay.remove();
-        });
-        document.body.appendChild(overlay);
-
-        // Auto-copiado al abrir: listo para pegar en WhatsApp con Ctrl+V.
-        copyToClipboard(text, () => {
-            ta.focus();
-            ta.setSelectionRange(0, ta.value.length);
-            showFeedback();
-        });
+    function nativeAwardsCanvas() {
+        if (!awardsState) return;
+        shareCanvasFile(awardsState.canvas, awardsState.filename, 'Cartel del campeón');
     }
 
     // Copia al portapapeles con feedback y fallback.
@@ -1157,33 +1973,6 @@ const App = (() => {
         } else {
             fallbackCopy(text, after);
         }
-    }
-
-    function buildCanvas(tournament, title, blocks) {
-        const subtitle = [tournament.date, tournament.location]
-            .filter(Boolean).join(' · ');
-        return Share.renderImage(title, subtitle, blocks);
-    }
-
-    function downloadImage(tournament, title, blocks) {
-        const canvas = buildCanvas(tournament, title, blocks);
-        const url = canvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'torneo-' + title.toLowerCase().replace(/\s+/g, '-') + '.png';
-        a.click();
-    }
-
-    function shareImage(tournament, title, blocks) {
-        const canvas = buildCanvas(tournament, title, blocks);
-        Share.canvasToBlob(canvas).then((blob) => {
-            const file = new File([blob], 'torneo.png', { type: 'image/png' });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                navigator.share({ files: [file], title: title }).catch(() => {});
-            } else {
-                downloadImage(tournament, title, blocks);
-            }
-        });
     }
 
     function fallbackCopy(text, done) {
@@ -1227,7 +2016,7 @@ const App = (() => {
             .replace(/"/g, '&quot;');
     }
 
-    return { init };
+    return { init, notify: toast };
 })();
 
 document.addEventListener('DOMContentLoaded', App.init);

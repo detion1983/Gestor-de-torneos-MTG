@@ -3,24 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#08070d">
+    <meta name="description" content="Gestor de torneos de Magic: The Gathering: inscripción, rondas suizas, Top y clasificación con desempates DCI.">
     <title>Gestión de Torneos de Magic</title>
     <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
     <link rel="alternate icon" href="assets/images/favicon.png">
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=2.3.0">
 </head>
 <body>
-    <header>
-        <img class="brand-logo" src="assets/images/logo.svg" alt="Magic TCG"
-             onerror="this.style.display='none'">
-        <h1>🏆 Gestión de Torneos de Magic</h1>
-        <p class="subtitle">Inscripción, rondas suizas, resultados y clasificación</p>
+    <!-- Fondo opcional (assets/images/background.jpg) y halos de maná -->
+    <div class="bg-image" aria-hidden="true"></div>
+    <div class="mana-glow" aria-hidden="true"></div>
+
+    <header class="app-header">
+        <div class="mana-strip" aria-hidden="true">
+            <span class="pip pip-w"></span>
+            <span class="pip pip-u"></span>
+            <span class="pip pip-b"></span>
+            <span class="pip pip-r"></span>
+            <span class="pip pip-g"></span>
+        </div>
+        <div class="header-bar">
+            <img class="brand-logo" src="assets/images/logo.svg" alt="Magic: The Gathering"
+                 onerror="this.style.display='none'">
+            <div class="header-center">
+                <p class="eyebrow">DCI Reporter · Competición</p>
+                <h1>Torneos de Magic</h1>
+                <p class="subtitle">Inscripción, rondas suizas, Top y clasificación con desempates DCI</p>
+                <div class="mana-row" aria-hidden="true">
+                    <img src="assets/images/symbols/w.svg" alt="" onerror="this.remove()">
+                    <img src="assets/images/symbols/u.svg" alt="" onerror="this.remove()">
+                    <img src="assets/images/symbols/b.svg" alt="" onerror="this.remove()">
+                    <img src="assets/images/symbols/r.svg" alt="" onerror="this.remove()">
+                    <img src="assets/images/symbols/g.svg" alt="" onerror="this.remove()">
+                    <img src="assets/images/symbols/c.svg" alt="" onerror="this.remove()">
+                </div>
+            </div>
+            <div class="header-side">
+                <span class="version-chip" id="appVersionChip">v2.3.0</span>
+                <span class="format-chip">Suizo · Top</span>
+            </div>
+        </div>
     </header>
+
+    <!-- Tira de arte de cabecera: las seis ilustraciones en una panorámica
+         (assets/images/banner.jpg · .jpeg · .png · .webp). Si el archivo no
+         existe, la banda se oculta y la cabecera queda como siempre. -->
+    <figure class="hero-band" id="heroBand" hidden aria-hidden="true">
+        <img class="hero-art" id="heroArt" alt="" decoding="async">
+    </figure>
+
+    <!-- Pestañas de sección: torneos (competición) y mesa (partidas) -->
+    <nav class="app-nav" aria-label="Secciones de la aplicación">
+        <button id="tabTournaments" class="app-tab is-active" type="button"
+                aria-controls="view-tournaments" aria-selected="true">🏆 Torneos</button>
+        <button id="tabTable" class="app-tab" type="button"
+                aria-controls="view-table" aria-selected="false">🎴 Mesa</button>
+    </nav>
 
     <main>
         <!-- VISTA: LISTA DE TORNEOS -->
         <section id="view-tournaments">
-            <div class="panel">
-                <h2>Crear torneo</h2>
+            <div class="panel panel-accent">
+                <div class="panel-head">
+                    <h2>Crear torneo</h2>
+                    <span class="chip chip-gold">Nuevo</span>
+                </div>
                 <form id="tournamentForm">
                     <div class="grid-2">
                         <label>
@@ -40,19 +91,34 @@
                             <input type="text" id="organizer" name="organizer" placeholder="Tu nombre">
                         </label>
                     </div>
+                    <fieldset class="color-fieldset">
+                        <legend>Identidad de color <span>opcional</span></legend>
+                        <div class="color-options" id="colorOptions" role="group"
+                             aria-label="Identidad de color del torneo"></div>
+                        <p class="color-help">
+                            El color decora la lista, la cabecera del torneo y los carteles
+                            que compartes. El arte de cada color se cambia en la
+                            <strong>Galería arcana</strong>.
+                        </p>
+                    </fieldset>
                     <p class="form-help">
                         El torneo se crea con los datos básicos. El <strong>número de rondas</strong>,
                         el <strong>Top</strong> y el <strong>tiempo de ronda</strong> los configuras
                         ya dentro del torneo, en su <strong>Configuración</strong>, mientras no cierres
                         las inscripciones. Al generar cada ronda el cronómetro arranca solo.
                     </p>
-                    <button type="submit" class="btn primary">➕ Guardar Torneo</button>
+                    <div class="actions-row">
+                        <button type="submit" class="btn primary">➕ Guardar torneo</button>
+                    </div>
                 </form>
             </div>
 
             <div class="panel">
-                <h2>Torneos guardados</h2>
-                <div class="toolbar">
+                <div class="panel-head">
+                    <h2>Torneos guardados</h2>
+                    <span class="chip" id="tournamentCount">0 torneos</span>
+                </div>
+                <div class="toolbar toolbar-end">
                     <button id="exportButton" class="btn ghost" type="button">⬇️ Exportar datos</button>
                     <label class="btn ghost file-label">
                         ⬆️ Importar datos
@@ -62,20 +128,78 @@
                 <ul id="tournamentList" class="tournament-list"></ul>
                 <p id="emptyTournaments" class="empty">No hay torneos todavía. Crea el primero arriba.</p>
             </div>
-        </section>
 
+            <div class="panel art-panel" id="artPanel">
+                <div class="panel-head">
+                    <h2>Galería arcana</h2>
+                    <span class="chip chip-muted">Arte por color</span>
+                </div>
+                <p class="form-help">
+                    Cada identidad de color tiene su ilustración. Copia tus archivos en
+                    <code>assets/images/colors/</code> con el nombre del color
+                    (<code>w</code>, <code>u</code>, <code>b</code>, <code>r</code>,
+                    <code>g</code>, <code>c</code>) y formato <code>.jpg</code>,
+                    <code>.jpeg</code>, <code>.png</code> o <code>.webp</code>: por ejemplo
+                    <code>assets/images/colors/w.jpg</code>. También puedes subirlos aquí: la
+                    imagen se guarda en tu navegador y tiene prioridad sobre la carpeta. Si falta
+                    una imagen se muestra el símbolo de maná.
+                </p>
+                <div class="art-gallery" id="artGallery"></div>
+                <input type="file" id="artFileInput" accept="image/*" hidden>
+                <p class="art-legal">
+                    Los símbolos de maná, los nombres y el universo de Magic: The Gathering son
+                    propiedad de Wizards of the Coast y se usan aquí bajo su
+                    <a href="https://company.wizards.com/es/legal/fancontentpolicy"
+                       target="_blank" rel="noopener">Fan Content Policy</a>.
+                    Contenido no oficial, gratuito y sin ánimo de lucro.
+                </p>
+            </div>
+        </section>
         <!-- VISTA: DETALLE DE TORNEO -->
         <section id="view-detail" hidden>
-            <div class="toolbar">
-                <button id="backButton" class="btn ghost" type="button">⬅️ Volver</button>
-                <h2 id="detailTitle"></h2>
-                <button id="deleteTournamentButton" class="btn danger" type="button">🗑️ Eliminar torneo</button>
+            <div class="detail-head" id="detailHead" data-color="none">
+                <div class="detail-banner" id="detailBanner" aria-hidden="true" hidden></div>
+                <button id="backButton" class="btn ghost small" type="button">⬅️ Volver</button>
+                <div class="detail-title-wrap">
+                    <h2 id="detailTitle"></h2>
+                    <span id="detailStatus" class="badge open">Abierto</span>
+                    <span class="color-tag" id="detailColorTag" hidden></span>
+                </div>
+                <label class="detail-color-field">
+                    Color
+                    <select id="detailColorSelect" aria-label="Identidad de color del torneo"></select>
+                </label>
+                <button id="deleteTournamentButton" class="btn danger small" type="button">🗑️ Eliminar torneo</button>
+            </div>
+
+            <!-- VISTA PREVIA PARA COMPARTIR (ronda / clasificación / bracket) -->
+            <div class="panel share-panel" id="sharePanel" hidden>
+                <div class="panel-head">
+                    <h3 id="shareTitle">Compartir</h3>
+                    <button id="shareClose" class="btn ghost small" type="button">✕ Cerrar</button>
+                </div>
+                <div class="share-preview" id="sharePreview"></div>
+                <div class="actions-row">
+                    <button id="shareCopyImage" class="btn primary" type="button">📋 Copiar imagen</button>
+                    <button id="shareDownload" class="btn ghost" type="button">⬇️ Descargar PNG</button>
+                    <button id="shareNative" class="btn ghost" type="button">📲 Compartir</button>
+                    <button id="shareCopyText" class="btn ghost" type="button">📝 Copiar texto</button>
+                    <a id="shareWhatsapp" class="btn ghost" href="#" target="_blank" rel="noopener">🟢 WhatsApp</a>
+                </div>
+                <p class="hint" id="shareHint">
+                    La imagen se copia al portapapeles lista para pegar en WhatsApp, Discord o
+                    donde quieras. Si tu navegador no permite copiarla, se descarga sola.
+                </p>
             </div>
 
             <div class="panel">
-                <h3>Inscripción de jugadores</h3>
+                <div class="panel-head">
+                    <h3>Inscripción de jugadores</h3>
+                    <span class="chip" id="playerBadge">0 inscritos</span>
+                </div>
                 <form id="playerForm" class="inline-form">
-                    <input type="text" id="playerName" list="knownPlayers" placeholder="Nombre del jugador" required>
+                    <input type="text" id="playerName" list="knownPlayers" placeholder="Nombre del jugador" required
+                           autocomplete="off">
                     <datalist id="knownPlayers"></datalist>
                     <button type="submit" class="btn primary">Añadir jugador</button>
                 </form>
@@ -85,7 +209,10 @@
             </div>
 
             <div class="panel">
-                <h3>Configuración de rondas y Top</h3>
+                <div class="panel-head">
+                    <h3>Configuración de rondas y Top</h3>
+                    <span class="chip chip-muted">Se bloquea al cerrar la suiza</span>
+                </div>
                 <div class="config-row">
                     <label>
                         Número de rondas
@@ -112,17 +239,28 @@
             </div>
 
             <div class="panel">
-                <div class="toolbar">
+                <div class="panel-head">
                     <h3>Rondas</h3>
+                    <span class="chip" id="roundsChip">Sin rondas</span>
+                </div>
+                <div class="toolbar">
                     <button id="generateRoundButton" class="btn primary" type="button">🎲 Generar siguiente ronda</button>
                     <button id="undoRoundButton" class="btn danger" type="button">🔙 Deshacer última ronda</button>
-                    <button id="shareRoundButton" class="btn ghost" type="button">📤 Compartir ronda (WhatsApp)</button>
+                    <button id="shareRoundButton" class="btn ghost" type="button">📤 Compartir ronda</button>
                 </div>
                 <div id="roundsContainer"></div>
+                <p class="hint">
+                    En cada mesa: <strong>jugador 1 a la izquierda</strong>,
+                    <strong>jugador 2 a la derecha</strong> y en el centro el
+                    <strong>desplegable del resultado</strong>
+                    (<code>0-0</code>, <code>1-0</code>, <code>1-1</code>, <code>2-1</code>,
+                    <code>2-0</code>, <code>0-1</code>, <code>1-2</code>, <code>0-2</code>).
+                    Elige <strong>—</strong> para dejarlo pendiente o pulsa
+                    <strong>✖ Deshacer</strong> para borrarlo.
+                </p>
             </div>
-
             <div class="panel" id="timerPanel">
-                <div class="toolbar">
+                <div class="panel-head">
                     <h3>⏱️ Cronómetro de ronda</h3>
                     <span id="timerStatus" class="timer-status">Detenido</span>
                 </div>
@@ -131,12 +269,12 @@
                     <div class="timer-controls">
                         <label class="timer-field">
                             Minutos:
-                            <input id="timerMinutes" type="number" min="1" max="240" value="25" />
+                            <input id="timerMinutes" type="number" min="1" max="240" value="25">
                         </label>
                         <button id="timerStartButton" class="btn primary" type="button">▶️ Iniciar</button>
                         <label class="timer-field">
                             Prórroga:
-                            <input id="timerAddMinutes" type="number" min="1" max="60" value="5" />
+                            <input id="timerAddMinutes" type="number" min="1" max="60" value="5">
                             min
                         </label>
                         <button id="timerAddButton" class="btn ghost" type="button" disabled>➕ Añadir tiempo</button>
@@ -153,16 +291,21 @@
             </div>
 
             <div class="panel" id="playoffPanel" hidden>
-                <div class="toolbar">
+                <div class="panel-head">
                     <h3>Eliminación directa</h3>
+                    <span class="chip chip-gold" id="playoffChip">Top</span>
+                </div>
+                <div class="toolbar">
                     <button id="shareBracketButton" class="btn ghost" type="button">📤 Compartir bracket</button>
                     <button id="undoPlayoffButton" class="btn danger" type="button">🔙 Deshacer última ronda Top</button>
                 </div>
                 <div id="playoffContainer"></div>
             </div>
-
             <div class="panel">
-                <h3>Clasificación (Standings)</h3>
+                <div class="panel-head">
+                    <h3>Clasificación (Standings)</h3>
+                    <span class="chip chip-muted">Pts · OMW% · GW% · OGW%</span>
+                </div>
                 <div class="table-wrap">
                     <table id="standingsTable">
                         <thead>
@@ -178,28 +321,126 @@
                         <tbody></tbody>
                     </table>
                 </div>
-                <div class="toolbar">
+                <div class="toolbar toolbar-end">
                     <button id="shareStandingsButton" class="btn ghost" type="button">📤 Compartir clasificación</button>
-                    <button id="closeSwissButton" class="btn primary" type="button">🔒 Cerrar suiza y generar Top</button>
                     <select id="closeTopSize" title="Cambia el tipo de Top si lo necesitas">
                         <option value="2">Top 2</option>
                         <option value="4">Top 4</option>
                         <option value="8">Top 8</option>
                     </select>
+                    <button id="closeSwissButton" class="btn primary" type="button">🔒 Cerrar suiza y generar Top</button>
                 </div>
+            </div>
+
+            <!-- CARTEL DEL CAMPEÓN (se rellena al cerrar el torneo) -->
+            <div class="panel awards-panel" id="awardsPanel" hidden>
+                <div class="panel-head">
+                    <h3>🏆 Cartel del campeón</h3>
+                    <span class="chip chip-gold" id="awardsChip">Final</span>
+                </div>
+                <p class="awards-summary" id="awardsSummary"></p>
+                <div class="awards-preview" id="awardsPreview"></div>
+                <div class="actions-row">
+                    <button id="awardsCopyImage" class="btn primary" type="button">📋 Copiar cartel</button>
+                    <button id="awardsDownload" class="btn ghost" type="button">⬇️ Descargar PNG</button>
+                    <button id="awardsNative" class="btn ghost" type="button">📲 Compartir</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA: CONTADOR DE MESA (vidas, veneno y maná flotante) -->
+        <section id="view-table" hidden>
+            <div class="panel table-panel">
+                <div class="panel-head">
+                    <h2>Contador de mesa</h2>
+                    <span class="chip" id="tableStatus">4 jugadores · 20 vidas</span>
+                </div>
+                <div class="table-toolbar">
+                    <div class="seg-group">
+                        <span class="seg-label">Jugadores</span>
+                        <div class="seg" id="tableCount" role="group"
+                             aria-label="Número de jugadores">
+                            <button class="seg-btn" type="button" data-count="2">2</button>
+                            <button class="seg-btn" type="button" data-count="3">3</button>
+                            <button class="seg-btn is-active" type="button" data-count="4"
+                                    aria-pressed="true">4</button>
+                        </div>
+                    </div>
+                    <label class="table-field">
+                        Vidas iniciales
+                        <select id="tableStartLife">
+                            <option value="20">20 · estándar</option>
+                            <option value="40">40 · Commander</option>
+                        </select>
+                    </label>
+                    <label class="table-check">
+                        <input type="checkbox" id="tableRotate" checked>
+                        Girar asientos de enfrente
+                    </label>
+                    <button id="tableReset" class="btn ghost small" type="button">
+                        🔄 Reiniciar mesa
+                    </button>
+                </div>
+                <p class="form-help">
+                    Toca <strong>−</strong> y <strong>+</strong> para mover las vidas; los botones
+                    <strong>−5 / −1 / +1 / +5</strong> van más rápido. El veneno avisa al llegar a
+                    <strong>10</strong>. Nombres, colores y contadores se guardan solos en este
+                    navegador.
+                </p>
+                <div class="table-seats" id="tableSeats" data-count="4"></div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-head">
+                    <h3>Maná flotante</h3>
+                    <button id="tableManaClear" class="btn ghost small" type="button">
+                        🧹 Vaciar maná
+                    </button>
+                </div>
+                <p class="form-help">
+                    Un contador por color y jugador, con los símbolos oficiales de maná. El maná
+                    flotante se vacía entre pasos y turnos: usa <strong>🧹 Vaciar maná</strong> al
+                    terminar.
+                </p>
+                <div class="mana-board" id="tableMana"></div>
             </div>
         </section>
     </main>
 
     <footer>
+        <div class="mana-strip mana-strip-footer" aria-hidden="true">
+            <span class="pip pip-w"></span>
+            <span class="pip pip-u"></span>
+            <span class="pip pip-b"></span>
+            <span class="pip pip-r"></span>
+            <span class="pip pip-g"></span>
+        </div>
         <p>Datos guardados en tu navegador (localStorage). <span id="playerCount"></span></p>
-        <p class="app-version">Versión <span id="appVersion">v1.0.0</span></p>
+        <p class="app-version">Versión <span id="appVersion">v2.3.0</span></p>
+        <p class="legal">
+            Proyecto no oficial y sin ánimo de lucro. Magic: The Gathering y sus símbolos son
+            propiedad de Wizards of the Coast y se usan bajo su
+            <a href="https://company.wizards.com/es/legal/fancontentpolicy"
+               target="_blank" rel="noopener">Fan Content Policy</a>.
+        </p>
     </footer>
 
-    <script src="js/storage.js"></script>
-    <script src="js/swiss.js"></script>
-    <script src="js/share.js"></script>
-    <script src="js/timer.js"></script>
-    <script src="js/app.js"></script>
+    <!-- Avisos no bloqueantes y diálogo de confirmación -->
+    <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="false"></div>
+
+    <noscript>
+        <p class="noscript">Esta aplicación necesita JavaScript activado para funcionar.</p>
+    </noscript>
+
+    <script src="js/storage.js?v=2.3.0"></script>
+    <script src="js/swiss.js?v=2.3.0"></script>
+    <script src="js/art.js?v=2.3.0"></script>
+    <script src="js/share.js?v=2.3.0"></script>
+    <script src="js/timer.js?v=2.3.0"></script>
+    <script src="js/table.js?v=2.3.0"></script>
+    <script src="js/app.js?v=2.3.0"></script>
 </body>
 </html>
+
+
+

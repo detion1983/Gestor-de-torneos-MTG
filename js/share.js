@@ -1,12 +1,41 @@
 /*
  * share.js
- * Genera contenido para compartir por WhatsApp:
- *   - Texto formateado (emparejamientos / clasificacion / bracket).
- *   - Imagen PNG dibujada con Canvas (descargable o compartible).
- * No depende de librerias externas.
+ * Texto e imagenes para compartir por WhatsApp / Discord / redes.
+ *
+ *  - Texto formateado: ronda, emparejamientos, clasificacion y bracket.
+ *  - Carteles PNG dibujados con Canvas (sin librerias externas):
+ *      renderImage(title, subtitle, blocks)  -> ronda / clasificacion / bracket
+ *      renderChampionsImage(info)            -> cartel del campeon al cerrar
+ *    Ambos devuelven un <canvas> listo para copiar, descargar o compartir.
  */
 
 const Share = (() => {
+    // Paleta del tema "Arena arcana" (coincide con css/styles.css).
+    const C = {
+        void: '#08070d',
+        night: '#100d1c',
+        panel: '#1a1630',
+        panel2: '#221c3d',
+        gold: '#d9b25f',
+        goldBright: '#f3dfae',
+        goldDim: '#8a6f35',
+        ink: '#efe6d2',
+        dim: '#a99f8c',
+        line: 'rgba(217, 178, 95, 0.28)',
+        lineSoft: 'rgba(217, 178, 95, 0.12)',
+        green: '#5fc07f',
+    };
+
+    // Cinco colores de mana, en orden WUBRG.
+    const MANA = ['#efe6c8', '#4a8fd4', '#9c86b8', '#d05a45', '#4f9f6a'];
+
+    const SERIF = 'Cinzel, Georgia, "Times New Roman", serif';
+    const SANS = '"Barlow", "Segoe UI", Arial, sans-serif';
+    const MONO = 'Consolas, "Courier New", monospace';
+
+    // ------------------------------------------------------------------
+    // TEXTO
+    // ------------------------------------------------------------------
     // Construye el texto completo de una ronda + clasificacion.
     function roundText(tournament, roundNumber, opts) {
         opts = opts || {};
@@ -50,12 +79,41 @@ const Share = (() => {
         return lines.join('\n');
     }
 
+    // Solo los emparejamientos de la ultima ronda (sin clasificacion).
+    function pairingsOnlyText(tournament) {
+        const round = tournament.rounds[tournament.rounds.length - 1];
+        if (!round) return '';
+        const lines = [];
+        lines.push('🏆 ' + tournament.name + ' — Ronda ' + round.number);
+        round.pairings.forEach((pr) => {
+            const p2 = pr.p2Id === null ? '(BYE)' : playerName(tournament, pr.p2Id);
+            lines.push('Mesa ' + pr.table + ' · ' + playerName(tournament, pr.p1Id) + ' vs ' + p2);
+        });
+        return lines.join('\n');
+    }
+
+    // Solo la clasificacion.
+    function standingsOnlyText(tournament) {
+        const standings = Swiss.calculateStandings(tournament);
+        if (!standings.length) return '';
+        const lines = [];
+        lines.push('🏆 ' + tournament.name + ' — Clasificación');
+        standings.forEach((s, i) => {
+            lines.push(
+                (i + 1) + 'º ' + s.player.name + '  ' + s.matchPoints + ' pts' +
+                '  (OMW ' + fmtPct(s.omw) + ' · GW ' + fmtPct(s.gameWinPct) +
+                ' · OGW ' + fmtPct(s.ogw) + ')'
+            );
+        });
+        return lines.join('\n');
+    }
+
     // Texto del bracket de eliminacion.
     function bracketText(tournament) {
         const p = tournament.playoff;
         if (!p) return '';
         const lines = [];
-        lines.push('🏆 ' + tournament.name + ' — Eliminación (' + 'Top ' + p.size + ')');
+        lines.push('🏆 ' + tournament.name + ' — Eliminación (Top ' + p.size + ')');
         lines.push('');
         p.rounds.forEach((round) => {
             lines.push('━━━ ' + round.name.toUpperCase() + ' ━━━');
@@ -79,105 +137,8 @@ const Share = (() => {
         return 'https://wa.me/?text=' + encodeURIComponent(text);
     }
 
-    // Solo los emparejamientos de la ultima ronda (sin clasificacion).
-    function pairingsOnlyText(tournament) {
-        const round = tournament.rounds[tournament.rounds.length - 1];
-        if (!round) return '';
-        const lines = [];
-        lines.push('🏆 ' + tournament.name + ' — Ronda ' + round.number);
-        round.pairings.forEach((pr) => {
-            const p1 = playerName(tournament, pr.p1Id);
-            if (pr.p2Id === null) {
-                lines.push('Mesa ' + pr.table + ' · ' + p1 + ' (BYE)');
-            } else {
-                lines.push('Mesa ' + pr.table + ' · ' + p1 + ' vs ' + playerName(tournament, pr.p2Id));
-            }
-        });
-        return lines.join('\n');
-    }
-
-    // Solo la clasificacion (sin emparejamientos).
-    function standingsOnlyText(tournament) {
-        const standings = Swiss.calculateStandings(tournament);
-        const lines = [];
-        lines.push('🏆 ' + tournament.name + ' — Clasificación');
-        standings.forEach((s, i) => {
-            lines.push(
-                (i + 1) + 'º ' + s.player.name + '  ' + s.matchPoints + ' pts' +
-                '  (OMW ' + fmtPct(s.omw) + ' · GW ' + fmtPct(s.gameWinPct) +
-                ' · OGW ' + fmtPct(s.ogw) + ')'
-            );
-        });
-        return lines.join('\n');
-    }
-
     // ------------------------------------------------------------------
-    // IMAGEN PNG generada con Canvas
-    // ------------------------------------------------------------------
-    function renderImage(title, subtitle, blocks) {
-        // blocks: [{ heading, lines: [..] }]
-        const DPR = 2; // nitidez
-        const pad = 40;
-        const width = 720;
-        const lineH = 34;
-
-        // Calcular altura necesaria.
-        let height = pad + 90; // cabecera
-        blocks.forEach((b) => { height += 50 + b.lines.length * lineH + 20; });
-        height += pad;
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width * DPR;
-        canvas.height = height * DPR;
-        const ctx = canvas.getContext('2d');
-        ctx.scale(DPR, DPR);
-
-        // Fondo
-        ctx.fillStyle = '#0f2027';
-        ctx.fillRect(0, 0, width, height);
-        ctx.fillStyle = '#123c2a';
-        ctx.fillRect(0, 0, width, 90);
-
-        // Cabecera
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 30px Segoe UI, Arial';
-        ctx.fillText(clip(title, 34), pad, 44);
-        ctx.font = '18px Segoe UI, Arial';
-        ctx.fillStyle = '#c8e6c9';
-        ctx.fillText(clip(subtitle || '', 50), pad, 72);
-
-        let y = 132;
-        ctx.font = '22px Consolas, monospace';
-
-        blocks.forEach((b) => {
-            ctx.fillStyle = '#ffd54f';
-            ctx.font = 'bold 22px Segoe UI, Arial';
-            ctx.fillText(b.heading, pad, y);
-            y += 34;
-
-            ctx.font = '20px Consolas, monospace';
-            b.lines.forEach((ln) => {
-                ctx.fillStyle = '#e8f5e9';
-                ctx.fillText(clip(ln, 52), pad, y);
-                y += lineH;
-            });
-            y += 16;
-        });
-
-        return canvas;
-    }
-
-    function clip(text, max) {
-        const s = String(text);
-        return s.length > max ? s.slice(0, max - 1) + '…' : s;
-    }
-
-    function canvasToBlob(canvas) {
-        return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-    }
-
-    // ------------------------------------------------------------------
-    // UTILIDADES
+    // UTILIDADES DE DIBUJO
     // ------------------------------------------------------------------
     function playerName(tournament, id, seed) {
         const p = tournament.players.find((x) => x.id === id);
@@ -187,13 +148,435 @@ const Share = (() => {
 
     function formatDate(iso) {
         if (!iso) return '';
-        const parts = iso.split('-');
+        const parts = String(iso).split('-');
         if (parts.length !== 3) return iso;
         return parts[2] + '/' + parts[1] + '/' + parts[0];
     }
 
     function fmtPct(value) {
         return (value * 100).toFixed(2).replace('.', ',') + '%';
+    }
+
+    function clip(text, max) {
+        const s = String(text);
+        return s.length > max ? s.slice(0, max - 1) + '…' : s;
+    }
+
+    function font(weight, size, family) {
+        return weight + ' ' + size + 'px ' + family;
+    }
+
+    // Ajusta el tamano de la fuente para que el texto quepa en maxWidth.
+    function fitFont(ctx, text, maxWidth, startSize, minSize, weight, family) {
+        let size = startSize;
+        while (size > minSize) {
+            ctx.font = font(weight || 700, size, family || SERIF);
+            if (ctx.measureText(text).width <= maxWidth) break;
+            size -= 2;
+        }
+        ctx.font = font(weight || 700, size, family || SERIF);
+        return size;
+    }
+
+    // Parte un texto en lineas que quepan en maxWidth con la fuente actual.
+    function wrapLines(ctx, text, maxWidth) {
+        const words = String(text).split(/\s+/).filter(Boolean);
+        if (!words.length) return [''];
+        const lines = [];
+        let current = '';
+        words.forEach((word) => {
+            const next = current ? current + ' ' + word : word;
+            if (ctx.measureText(next).width <= maxWidth || !current) {
+                current = next;
+            } else {
+                lines.push(current);
+                current = word;
+            }
+        });
+        if (current) lines.push(current);
+        return lines;
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+        const radius = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+    }
+
+    function drawManaStrip(ctx, x, y, w, h, alpha) {
+        const seg = w / MANA.length;
+        ctx.save();
+        ctx.globalAlpha = alpha == null ? 0.9 : alpha;
+        MANA.forEach((color, i) => {
+            ctx.fillStyle = color;
+            ctx.fillRect(x + i * seg, y, seg + 0.6, h);
+        });
+        ctx.restore();
+    }
+
+    function drawGlow(ctx, x, y, r, color) {
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+        grad.addColorStop(0, color);
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+
+    function drawBackdrop(ctx, w, h, art, accent) {
+        const bg = ctx.createLinearGradient(0, 0, 0, h);
+        bg.addColorStop(0, '#161029');
+        bg.addColorStop(0.55, '#0c0a16');
+        bg.addColorStop(1, '#08070d');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, w, h);
+
+        if (art) drawArt(ctx, w, h, art);
+
+        drawGlow(ctx, w * 0.5, -40, 420,
+            accent ? hexToRgba(accent, 0.26) : 'rgba(155, 122, 232, 0.22)');
+        drawGlow(ctx, w * 0.08, h * 0.9, 320, 'rgba(217, 178, 95, 0.12)');
+        drawGlow(ctx, w * 0.95, h * 0.75, 300, 'rgba(74, 143, 212, 0.12)');
+    }
+
+    // Convierte "#rrggbb" en "rgba(r, g, b, alpha)".
+    function hexToRgba(hex, alpha) {
+        const value = String(hex || '').replace('#', '');
+        if (!/^[0-9a-f]{6}$/i.test(value)) {
+            return 'rgba(217, 178, 95, ' + alpha + ')';
+        }
+        const num = parseInt(value, 16);
+        return 'rgba(' + ((num >> 16) & 255) + ', ' +
+            ((num >> 8) & 255) + ', ' + (num & 255) + ', ' + alpha + ')';
+    }
+
+    // Dibuja el arte de fondo cubriendo todo el cartel, con un velo oscuro
+    // para que el texto siga siendo legible.
+    function drawArt(ctx, w, h, art) {
+        if (!art || !art.width || !art.height) return;
+        const scale = Math.max(w / art.width, h / art.height);
+        const dw = art.width * scale;
+        const dh = art.height * scale;
+        ctx.save();
+        ctx.drawImage(art, (w - dw) / 2, (h - dh) / 2, dw, dh);
+        const veil = ctx.createLinearGradient(0, 0, 0, h);
+        veil.addColorStop(0, 'rgba(8, 7, 13, 0.52)');
+        veil.addColorStop(0.45, 'rgba(8, 7, 13, 0.74)');
+        veil.addColorStop(1, 'rgba(8, 7, 13, 0.93)');
+        ctx.fillStyle = veil;
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+    }
+
+    // Barra fina con el acento de la identidad de color del torneo.
+    function drawAccentBar(ctx, w, y, accent) {
+        if (!accent) return;
+        const grad = ctx.createLinearGradient(0, 0, w, 0);
+        grad.addColorStop(0, hexToRgba(accent, 0.15));
+        grad.addColorStop(0.5, hexToRgba(accent, 0.9));
+        grad.addColorStop(1, hexToRgba(accent, 0.15));
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, y, w, 3);
+    }
+
+    // Simbolo de mana (SVG ya cargado) en una posicion y tamano dados.
+    function drawSymbol(ctx, symbol, x, y, size, alpha) {
+        if (!symbol) return;
+        ctx.save();
+        ctx.globalAlpha = alpha == null ? 0.9 : alpha;
+        ctx.drawImage(symbol, x, y, size, size);
+        ctx.restore();
+    }
+
+    function letterSpace(ctx, px) {
+        if ('letterSpacing' in ctx) ctx.letterSpacing = px + 'px';
+    }
+
+    // ------------------------------------------------------------------
+    // CARTEL GENERICO (ronda / clasificacion / bracket)
+    // options = { art, symbol, accent, colorName }
+    // ------------------------------------------------------------------
+    function renderImage(title, subtitle, blocks, options) {
+        options = options || {};
+        const DPR = 2;
+        const W = 900;
+        const PAD = 46;
+        const LINE = 30;
+        const symbolSize = options.symbol ? 46 : 0;
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.font = font(400, 17, SANS);
+
+        // Pre-partir las lineas para calcular la altura exacta del cartel.
+        const prepared = (blocks || []).map((b) => {
+            const lines = [];
+            (b.lines || []).forEach((raw) => {
+                wrapLines(ctx, String(raw), W - PAD * 2).forEach((l) => lines.push(l));
+            });
+            return { heading: b.heading || '', lines: lines };
+        });
+
+        let H = 152;
+        prepared.forEach((b) => { H += (b.heading ? 32 : 8) + b.lines.length * LINE + 22; });
+        H = Math.max(H + 56, 360);
+
+        canvas.width = W * DPR;
+        canvas.height = H * DPR;
+        ctx.scale(DPR, DPR);
+
+        drawBackdrop(ctx, W, H, options.art, options.accent);
+        drawManaStrip(ctx, 0, 0, W, 8);
+        drawAccentBar(ctx, W, 8, options.accent);
+
+        // Simbolo de mana de la identidad del torneo (arriba a la derecha).
+        if (symbolSize) {
+            drawSymbol(ctx, options.symbol, W - PAD - symbolSize, 22, symbolSize, 0.95);
+        }
+
+        // Cabecera
+        ctx.textAlign = 'left';
+        const titleWidth = W - PAD * 2 - (symbolSize ? symbolSize + 12 : 0);
+        ctx.fillStyle = C.goldBright;
+        fitFont(ctx, title, titleWidth, 32, 20, 700, SERIF);
+        ctx.fillText(title, PAD, 68);
+
+        ctx.fillStyle = C.dim;
+        ctx.font = font(400, 16, SANS);
+        ctx.fillText(clip(subtitle || '', 90), PAD, 96);
+
+        ctx.strokeStyle = C.line;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(PAD, 118);
+        ctx.lineTo(W - PAD, 118);
+        ctx.stroke();
+
+        // Bloques
+        let y = 158;
+        prepared.forEach((b) => {
+            if (b.heading) {
+                ctx.fillStyle = C.gold;
+                ctx.font = font(700, 15, SANS);
+                letterSpace(ctx, 2);
+                ctx.fillText(String(b.heading).toUpperCase(), PAD, y);
+                letterSpace(ctx, 0);
+                y += 30;
+            } else {
+                y += 8;
+            }
+            ctx.font = font(400, 16, MONO);
+            ctx.fillStyle = C.ink;
+            b.lines.forEach((ln) => {
+                ctx.fillText(ln, PAD, y);
+                y += LINE;
+            });
+            y += 22;
+        });
+
+        // Pie
+        ctx.font = font(400, 12, SANS);
+        ctx.fillStyle = 'rgba(217, 178, 95, 0.6)';
+        ctx.textAlign = 'left';
+        ctx.fillText('DCI Reporter · Magic: The Gathering', PAD, H - 22);
+        ctx.textAlign = 'right';
+        const stamp = new Date().toLocaleDateString('es-ES');
+        ctx.fillText(options.colorName ? options.colorName + ' · ' + stamp : stamp, W - PAD, H - 22);
+
+        return canvas;
+    }
+
+    function paintAwardCard(ctx, x, y, w, h, data) {
+        const grad = ctx.createLinearGradient(x, y, x, y + h);
+        grad.addColorStop(0, 'rgba(42, 35, 74, 0.94)');
+        grad.addColorStop(1, 'rgba(15, 12, 26, 0.94)');
+        ctx.fillStyle = grad;
+        roundRect(ctx, x, y, w, h, 12);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(217, 178, 95, 0.22)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = C.goldDim;
+        ctx.font = font(700, 11, SANS);
+        letterSpace(ctx, 2);
+        ctx.fillText(String(data.label || '').toUpperCase(), x + w / 2, y + 30);
+        letterSpace(ctx, 0);
+
+        ctx.fillStyle = C.ink;
+        fitFont(ctx, data.name || '—', w - 34, 23, 14, 700, SERIF);
+        ctx.fillText(data.name || '—', x + w / 2, y + 68);
+
+        ctx.fillStyle = C.dim;
+        ctx.font = font(400, 13, SANS);
+        ctx.fillText(clip(data.detail || '', 54), x + w / 2, y + 94);
+
+        drawManaStrip(ctx, x + w / 2 - 42, y + 110, 84, 3, 0.55);
+    }
+
+    // ------------------------------------------------------------------
+    // CARTEL DEL CAMPEON
+    // info = {
+    //   tournamentName, meta, chipLabel,
+    //   champion: { name, stat, subline, record } | null,
+    //   second: { label, name, detail } | null,
+    //   third:  { label, name, detail } | null,
+    //   emptyText, footer
+    // }
+    // ------------------------------------------------------------------
+    function renderChampionsImage(info) {
+        info = info || {};
+        const DPR = 2;
+        const W = 900;
+        const H = 620;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = W * DPR;
+        canvas.height = H * DPR;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(DPR, DPR);
+
+        drawBackdrop(ctx, W, H, info.art, info.accent);
+        drawManaStrip(ctx, 0, 0, W, 8);
+        drawAccentBar(ctx, W, 8, info.accent);
+
+        // Marca de agua con el simbolo de mana detras del nombre.
+        if (info.symbol) {
+            drawSymbol(ctx, info.symbol, W / 2 - 150, 92, 300, 0.09);
+        }
+
+        // Marco doble dorado
+        ctx.strokeStyle = 'rgba(217, 178, 95, 0.55)';
+        ctx.lineWidth = 2;
+        roundRect(ctx, 24, 34, W - 48, H - 62, 18);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(217, 178, 95, 0.18)';
+        ctx.lineWidth = 1;
+        roundRect(ctx, 34, 44, W - 68, H - 82, 14);
+        ctx.stroke();
+
+        // Cabecera
+        ctx.textAlign = 'center';
+        ctx.fillStyle = C.goldDim;
+        ctx.font = font(700, 13, SANS);
+        letterSpace(ctx, 3);
+        ctx.fillText('DCI REPORTER · MAGIC: THE GATHERING', W / 2, 84);
+        letterSpace(ctx, 0);
+
+        // Etiqueta de color arriba a la izquierda y simbolo a la derecha.
+        if (info.colorName) {
+            ctx.textAlign = 'left';
+            ctx.fillStyle = hexToRgba(info.accent || C.gold, 0.95);
+            ctx.font = font(700, 11, SANS);
+            letterSpace(ctx, 2);
+            ctx.fillText(String(info.colorName).toUpperCase(), 58, 88);
+            letterSpace(ctx, 0);
+            ctx.textAlign = 'center';
+        }
+        if (info.symbol) {
+            drawSymbol(ctx, info.symbol, W - 80, 62, 34, 0.95);
+        }
+
+        ctx.fillStyle = C.ink;
+        const tournamentName = clip(info.tournamentName || 'Torneo', 60);
+        fitFont(ctx, tournamentName, W - 170, 26, 15, 700, SERIF);
+        ctx.fillText(tournamentName, W / 2, 118);
+
+        const champion = info.champion && info.champion.name ? info.champion : null;
+
+        // Etiqueta (CAMPEON / LIDER SUIZO...)
+        ctx.fillStyle = champion ? C.gold : C.dim;
+        ctx.font = font(700, 16, SANS);
+        letterSpace(ctx, 4);
+        ctx.fillText(info.chipLabel || 'CAMPEÓN', W / 2, 176);
+        letterSpace(ctx, 0);
+
+        // Nombre protagonista
+        ctx.fillStyle = champion ? C.goldBright : C.dim;
+        fitFont(ctx, champion ? champion.name : '—', W - 140, 64, 24, 900, SERIF);
+        if (champion) {
+            ctx.shadowColor = 'rgba(217, 178, 95, 0.45)';
+            ctx.shadowBlur = 28;
+        }
+        ctx.fillText(champion ? clip(champion.name, 42) : '—', W / 2, 258);
+        ctx.shadowBlur = 0;
+
+        if (champion) {
+            const stats = [champion.stat, champion.record].filter(Boolean);
+            ctx.fillStyle = C.ink;
+            ctx.font = font(600, 17, SANS);
+            ctx.fillText(stats.join('   ·   '), W / 2, 296);
+
+            if (champion.subline) {
+                ctx.fillStyle = C.dim;
+                ctx.font = font(400, 14, SANS);
+                ctx.fillText(clip(champion.subline, 90), W / 2, 322);
+            }
+        } else {
+            ctx.fillStyle = C.dim;
+            ctx.font = font(400, 16, SANS);
+            ctx.fillText(info.emptyText || 'El cartel se completa al cerrar el torneo.', W / 2, 300);
+        }
+
+        // Separador con rombo central
+        const sepY = 356;
+        ctx.strokeStyle = C.line;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(W / 2 - 210, sepY);
+        ctx.lineTo(W / 2 - 30, sepY);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(W / 2 + 30, sepY);
+        ctx.lineTo(W / 2 + 210, sepY);
+        ctx.stroke();
+        ctx.save();
+        ctx.translate(W / 2, sepY);
+        ctx.rotate(Math.PI / 4);
+        ctx.strokeStyle = C.gold;
+        ctx.strokeRect(-5, -5, 10, 10);
+        ctx.restore();
+
+        // Tarjetas secundarias
+        const cards = [info.second, info.third].filter(Boolean);
+        if (cards.length) {
+            const gap = 26;
+            const cardW = (W - 96 - gap) / 2;
+            const cardH = 130;
+            cards.forEach((card, i) => {
+                paintAwardCard(ctx, 48 + i * (cardW + gap), 384, cardW, cardH, card);
+            });
+        }
+
+        // Pie
+        ctx.fillStyle = 'rgba(239, 230, 210, 0.78)';
+        ctx.font = font(500, 13, SANS);
+        ctx.fillText(clip(info.meta || '', 110), W / 2, 552);
+
+        ctx.fillStyle = 'rgba(217, 178, 95, 0.55)';
+        ctx.font = font(400, 11, SANS);
+        ctx.fillText(info.footer || 'DCI Reporter', W / 2, 576);
+
+        return canvas;
+    }
+
+    function canvasToBlob(canvas) {
+        return new Promise((resolve) => {
+            if (canvas.toBlob) {
+                canvas.toBlob(resolve, 'image/png');
+            } else {
+                resolve(null);
+            }
+        });
     }
 
     return {
@@ -203,6 +586,13 @@ const Share = (() => {
         bracketText,
         whatsappLink,
         renderImage,
+        renderChampionsImage,
         canvasToBlob,
+        playerName,
+        formatDate,
     };
 })();
+
+
+
+

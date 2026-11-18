@@ -26,6 +26,9 @@ const Swiss = (() => {
             date: data.date || '',
             location: data.location || '',
             organizer: data.organizer || '',
+            // Identidad de color (W/U/B/R/G/artefacto) que decora lista,
+            // cabecera y carteles. '' = torneo sin color.
+            color: normalizeColor(data.color),
             // Planificacion definida por el organizador (ajustable dentro del torneo):
             //   roundCount:   numero de rondas suizas planificadas (0 = sin limite)
             //   topSize:      tamano de la eliminatoria directa (0 = sin Top)
@@ -38,6 +41,12 @@ const Swiss = (() => {
             players: [], // { id, name, dropped }
             rounds: [],  // [{ number, pairings: [{ table, p1Id, p2Id, result, reported }] }]
         };
+    }
+
+    // Identidad de color: 'w', 'u', 'b', 'r', 'g', 'c' o '' (sin color).
+    function normalizeColor(value) {
+        const key = String(value || '').toLowerCase();
+        return ['w', 'u', 'b', 'r', 'g', 'c'].indexOf(key) >= 0 ? key : '';
     }
 
     // Numero de rondas planificado: entero >= 0 (0 o invalido = sin limite).
@@ -281,13 +290,13 @@ const Swiss = (() => {
     // RESULTADOS
     // El organizador introduce el marcador exacto de games, estilo DCI.
     // Todas las combinaciones posibles de una ronda al mejor de 3 (Bo3):
-    //   Victoria P1: '2-0'  '2-1'  '1-0'  (rival concede / no se presenta)
-    //   Empate:      '1-1'  (por tiempo / tablas)
-    //   Victoria P2: '0-1'  (rival concede / no se presenta)  '0-2'  '1-2'
+    //   Empate:      '0-0' (ambos a cero)  '1-1' (por tiempo / tablas)
+    //   Victoria P1: '1-0' (rival concede / no se presenta)  '2-1'  '2-0'
+    //   Victoria P2: '0-1' (rival concede / no se presenta)  '1-2'  '0-2'
     // Se guarda el marcador real para que GW% y OGW% sean correctos.
     // Internamente se deriva el ganador: 'p1' | 'p2' | 'draw'.
     // ------------------------------------------------------------------
-    const SCORES = ['2-0', '2-1', '1-0', '1-1', '0-1', '0-2', '1-2'];
+    const SCORES = ['0-0', '1-0', '1-1', '2-1', '2-0', '0-1', '1-2', '0-2'];
 
     // Devuelve los games ganados por cada lado a partir del marcador.
     function parseScore(score) {
@@ -601,7 +610,9 @@ const Swiss = (() => {
         const parsed = parseScore(score);
         if (!parsed) return;
         match.score = score;
-        match.winnerId = parsed.winner === 'p1' ? match.p1Id : match.p2Id;
+        // Un empate ('0-0' / '1-1') no da ganador: el cruce queda pendiente.
+        match.winnerId = parsed.winner === 'p1' ? match.p1Id
+            : (parsed.winner === 'p2' ? match.p2Id : null);
     }
 
     // Deshace el resultado de un partido de eliminatoria.

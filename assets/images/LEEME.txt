@@ -3,6 +3,9 @@
 #   logo.png        -> logotipo de la tienda/torneo (PNG o SVG)
 #   favicon.png     -> icono de la pestaña (512x512 PNG)  o favicon.ico
 #   background.jpg  -> fondo de cabecera (JPG o WebP)
+#   banner.jpg      -> TIRA de cabecera: las 6 artes en fila, ~6:1 (2400x716).
+#                      Tambien valen banner.jpeg / banner.png / banner.webp;
+#                      si no existe, la banda se oculta sola y no pasa nada.
 #
 # YA INCLUIDOS (provisionales, creados por la app; sustitúyelos por los tuyos):
 #   favicon.svg / favicon.png  -> icono de la pestaña (trofeo verde)

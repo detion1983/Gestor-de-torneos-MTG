@@ -1,0 +1,33 @@
+# Arte por identidad de color (opcional)
+#
+# Coloca aqui una ilustracion por color. La app la usa en la lista de torneos,
+# en la cabecera del torneo y en los carteles PNG que se comparten.
+#
+# Nombres exactos (se prueban en este orden de formato):
+#   w.jpg / w.jpeg / w.png / w.webp   -> Blanco    (Ángel guardián)
+#   u.jpg / u.jpeg / u.png / u.webp   -> Azul      (Hechicero astrónomo)
+#   b.jpg / b.jpeg / b.png / b.webp   -> Negro     (Señor demonio)
+#   r.jpg / r.jpeg / r.png / r.webp   -> Rojo      (Dragón de la montaña)
+#   g.jpg / g.jpeg / g.png / g.webp   -> Verde     (Guardián del bosque)
+#   c.jpg / c.jpeg / c.png / c.webp   -> Artefacto (Gólem de relojería)
+#
+# El nombre va en minusculas y sin espacios: w.jpg, NUNCA W.JPG ni blank.jpg.
+# En GitHub Pages las rutas distinguen mayusculas de minusculas.
+# Ejemplo: para el color rojo, guarda  assets/images/colors/r.jpg
+#
+# Recomendaciones:
+#   - Ilustracion vertical (proporcion 2:3) para que el recorte quede bien.
+#   - 600x900 px es suficiente; la app comprime a 820x1230 como maximo.
+#   - JPEG de calidad media para que el repositorio no pese demasiado.
+#   - Imagen oscura o con las zonas importantes en el centro: encima se pinta
+#     texto claro, un velo oscuro y el simbolo de mana.
+#
+# Tambien puedes subir el arte desde la propia app (panel "Galeria arcana").
+# Ese arte se guarda en el navegador (localStorage, clave "dci.art"), tiene
+# prioridad sobre esta carpeta y solo existe en ese equipo.
+#
+# Si un color no tiene imagen, la app pinta un degradado con el simbolo de mana:
+# nunca se rompe por falta de arte.
+#
+# Aviso: Magic: The Gathering y sus simbolos son propiedad de Wizards of the
+# Coast y se usan bajo su Fan Content Policy. Contenido no oficial y gratuito.

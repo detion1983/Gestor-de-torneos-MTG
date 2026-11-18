@@ -1,6 +1,6 @@
 # Gestión de Torneos de Magic 🏆
 
-**Versión actual: v1.2.0** · 10 de marzo de 2026
+**Versión actual: v2.3.0** · 18 de noviembre de 2026
 
 Gestor de torneos de **Magic: The Gathering** (sistema suizo, resultados y clasificación).
 Permite crear torneos, inscribir jugadores, generar rondas por sistema **suizo**,
@@ -22,11 +22,32 @@ La versión se muestra de forma discreta en el pie de la página.
   sugieren automáticamente en torneos futuros (autocompletado).
 - **Emparejamiento suizo** por puntuación, evitando repetir rival.
 - **Byes automáticos** cuando el número de jugadores es impar.
-- **Introducción de resultados** por mesa (victoria jugador 1 / empate / victoria jugador 2).
+- **Introducción de resultados** por mesa con un **desplegable central**: jugador 1
+  a la izquierda, jugador 2 a la derecha y el marcador exacto en medio (`0-0`,
+  `1-0`, `1-1`, `2-1`, `2-0`, `0-1`, `1-2`, `0-2`).
 - **Clasificación (standings)** con: Puntos, OMW%, GW% y OGW% (formato oficial de desempates).
 - **Jugadores retirados** (drop) que dejan de emparejarse.
 - **Exportar / Importar** todos los datos en un archivo JSON (copia de seguridad).
 - **Persistencia** automática en el navegador (`localStorage`).
+- **Cartel del campeón**: al cerrar el torneo se genera un póster con el campeón,
+  el finalista y el mejor suizo/3.º clasificado, listo para copiar o descargar.
+- **Compartir como imagen**: ronda, clasificación y bracket se generan como carteles
+  PNG con la estética de la app (copiar al portapapeles, descargar o compartir).
+- **Avisos no bloqueantes**: toasts para confirmar acciones y diálogos propios para
+  lo delicado (eliminar torneo, deshacer rondas, cerrar la suiza).
+- **Contadores en vivo**: inscritos/retirados, torneos guardados y ronda actual.
+- **Identidad de color por torneo** (blanco, azul, negro, rojo, verde o artefacto):
+  su símbolo de maná y su acento tiñen la lista de torneos, la cabecera del torneo
+  y los carteles que se comparten.
+- **Galería arcana**: arte propio para cada color. Puedes subir la imagen desde la
+  propia app (se guarda comprimida en el navegador) o copiarla como
+  `assets/images/colors/<color>.jpg` (también `.jpeg`, `.png` y `.webp`); si
+  falta, se pinta un degradado con el símbolo de maná oficial.
+- **🎴 Contador de mesa**: pestaña **Mesa** con asientos para **2, 3 o 4
+  jugadores** (los de enfrente giran 180°), vidas de **20** (o 40 Commander) con
+  botones grandes y atajos ±1/±5, **veneno** con aviso a 10, nombre y color por
+  jugador y un panel aparte de **maná flotante** W/U/B/R/G/C. Todo se guarda en
+  `localStorage` (clave `dci.table`).
 
 ---
 
@@ -81,14 +102,32 @@ index.html          Interfaz principal
 css/styles.css      Estilos
 js/storage.js       Persistencia (localStorage) y registro de jugadores
 js/swiss.js         Lógica: emparejamiento suizo, resultados y standings
-js/share.js         Genera texto/imagen para compartir por WhatsApp
+js/art.js           Identidad de color, galería de arte y símbolos de maná
+js/table.js         Contador de mesa: vidas, veneno y maná flotante (2-4 jugadores)
+js/share.js         Carteles PNG (ronda/clasificación/bracket/campeón) y texto para compartir
 js/timer.js         Cronómetro de ronda y avisos acústicos
 js/app.js           Controlador de la interfaz (DOM y eventos)
 assets/sounds/      Sonidos opcionales del cronómetro (round-*.mp3)
 assets/images/      Imágenes opcionales (logo.png, favicon, fondo)
+assets/images/symbols/  Símbolos de maná oficiales en SVG (w/u/b/r/g/c)
+assets/images/colors/   Arte por color: w/u/b/r/g/c en jpg, jpeg, png o webp
+assets/images/colors/LEEME.txt  Nombres exactos, formatos y medidas del arte
+assets/images/banner.jpg        Tira de cabecera con las seis artes en fila (opcional)
 assets/README.md    Guía de nombres y formatos de sonidos/imágenes
+tests/              Pruebas sin dependencias (verify, smoke y e2e con Edge)
+tests/README.md     Qué comprueba cada prueba y cómo ejecutarlas
 README.md           Este archivo
 ```
+
+### 🧪 Pruebas
+
+```bash
+node tests/verify.js   # integración estática: IDs, API de Art, clases y ?v=
+node tests/smoke.js    # lógica de color/arte, storage y export/import
+node tests/e2e.js      # flujo real en Edge headless (python + Edge)
+```
+
+Ninguna necesita `npm install`. Detalles en `tests/README.md`.
 
 ---
 
@@ -126,6 +165,90 @@ Si quieres tus propios sonidos, ponlos en **`assets/sounds/`** con estos nombres
 
 Si un archivo no existe, se usa el pitido por código. Ver **`assets/README.md`**
 para detalles de sonidos e imágenes (logos, favicon, fondos).
+
+---
+
+## 🎨 Identidad de color y galería arcana
+
+Cada torneo puede llevar una **identidad de color**: blanco, azul, negro, rojo,
+verde o artefacto (`w`, `u`, `b`, `r`, `g`, `c`). Es opcional y se elige al crear
+el torneo o desde la cabecera del torneo (**Color**). Se usa para:
+
+- Pintar el acento y la miniatura de arte en la **lista de torneos**.
+- Decorar la **cabecera del torneo** con el arte de fondo, la etiqueta de color y
+  el símbolo de maná.
+- Colorear los **carteles PNG** de ronda, clasificación, bracket y campeón
+  (arte de fondo, barra de acento y símbolo).
+
+### Arte por color
+
+El arte se resuelve en este orden:
+
+1. **Imagen subida desde la app** (**Galería arcana → 📷 Subir arte**). Se
+   comprime a JPEG (máx. 820×1230, calidad 0.8) y se guarda en el
+   `localStorage` del navegador, así que solo existe en ese equipo. El botón
+   **✖ Quitar** vuelve al arte por defecto.
+2. **Archivo en `assets/images/colors/`** con el nombre del color:
+   `w.jpg`, `u.jpg`, `b.jpg`, `r.jpg`, `g.jpg`, `c.jpg` (también se aceptan
+   `.jpeg`, `.png` y `.webp`). El nombre va siempre en **minúsculas**: `w.jpg`,
+   nunca `W.JPG` ni `blanco.jpg`.
+3. Si no hay ninguna de las dos, se pinta un **degradado con el símbolo de
+   maná**: la app nunca se rompe por falta de arte.
+
+> Los símbolos de maná oficiales están en `assets/images/symbols/` (`w.svg`,
+> `u.svg`, `b.svg`, `r.svg`, `g.svg`, `c.svg`).
+
+### Tira de arte de cabecera (opcional)
+
+Entre el título y las pestañas se puede mostrar una **panorámica** con las seis
+ilustraciones, a modo de portada:
+
+- Archivo: **`assets/images/banner.jpg`** (también `.jpeg`, `.png` y `.webp`); se
+  prueban en ese orden y se usa el primero que exista.
+- Proporción aproximada **6:1** (la incluida es 2400×716): las seis artes en
+  fila. La banda recorta arriba y abajo, así que conviene que lo importante esté
+  en la franja central de cada ilustración.
+- Si el archivo **no existe**, la banda se oculta sola: la cabecera se ve igual
+  que siempre y la app no se rompe.
+- Peso recomendado **< 400 KB**. La tira incluida se montó juntando los seis
+  archivos de `assets/images/colors/`, así que puedes rehacerla cuando cambies
+  de arte (por ejemplo con cualquier editor: seis imágenes de 572×1024 en fila).
+
+**Nota sobre `file://`:** al abrir `index.html` con doble clic, los carteles PNG
+no dibujan las imágenes de la carpeta (`assets/images/colors/`) porque el canvas
+quedaría "manchado" y la descarga fallaría. En ese modo se usan el degradado y
+los acentos; las imágenes **subidas** desde la galería sí se dibujan siempre.
+Sirviendo la app por HTTP (GitHub Pages o `python -m http.server`) se usan ambos.
+
+### Aviso legal
+
+Magic: The Gathering, sus nombres y sus símbolos son propiedad de **Wizards of
+the Coast**. Se usan aquí bajo su
+[Fan Content Policy](https://company.wizards.com/es/legal/fancontentpolicy).
+Contenido no oficial, gratuito y sin ánimo de lucro.
+
+---
+
+## 🎴 Contador de mesa (partidas)
+
+La pestaña **🎴 Mesa** convierte la app en un contador para jugar partidas
+presenciales, sin torneos de por medio:
+
+- **2, 3 o 4 jugadores**: los asientos de la parte superior se giran 180° para que
+  su jugador los lea derecho (se puede desactivar con *Girar asientos de enfrente*).
+- **Vidas** de **20** por defecto (o **40** para Commander) con botones grandes
+  **− / +**, atajos **−5 / −1 / +1 / +5** y reinicio por jugador (**⟳**).
+- **Veneno** ☠️ por jugador con aviso verde al llegar a **10**.
+- **Maná flotante**: una tarjeta por jugador con los seis símbolos oficiales
+  (blanco, azul, negro, rojo, verde y artefacto) y botones de sumar/restar;
+  **🧹 Vaciar maná** deja todos los contadores a cero.
+- **Nombre y color por jugador**: el color pinta el acento del asiento y usa su
+  arte (Galería arcana) igual que los torneos.
+- **Reiniciar mesa** pide confirmación (dos toques) y devuelve vidas, veneno y
+  maná a su estado inicial sin borrar nombres ni colores.
+
+Los contadores se guardan solos en `localStorage` con la clave `dci.table`, y la
+última pestaña abierta en `dci.view`; no se mezclan con los datos de los torneos.
 
 ---
 
@@ -194,49 +317,86 @@ En la tabla de clasificación verás estas columnas (pasa el ratón por encima p
 (desempates oficiales). Si sigue el empate, por orden alfabético del nombre.
 
 ### Registro de resultados (marcador exacto)
-Al reportar cada partida se elige el **marcador real de games**, con botones rápidos:
+Cada mesa se muestra como un marcador: **jugador 1 a la izquierda**, un
+**desplegable en el centro** y **jugador 2 a la derecha**. En el desplegable
+eliges el marcador real de games:
 
-`2-0` · `2-1` · `1-0` · `1-1` · `0-1` · `0-2` · `1-2`
+`0-0` · `1-0` · `1-1` · `2-1` · `2-0` · `0-1` · `1-2` · `0-2`
 
-Cada combinación posible de una ronda al mejor de 3 (Bo3), agrupada y ordenada
-por ganador:
+Cada opción indica a quién da la victoria (`1-0 · gana P1`, `0-2 · gana P2`) y
+`0-0` / `1-1` se guardan como tablas:
 
-- **Gana P1**: `2-0`, `2-1`, `1-0` (rival concede / no se presenta)
-- **Empate**: `1-1` (por tiempo / tablas)
-- **Gana P2**: `0-1` (rival concede / no se presenta), `0-2`, `1-2`
+- **Empate**: `0-0` (ambos a cero), `1-1` (por tiempo / tablas)
+- **Gana P1**: `1-0` (rival concede / no se presenta), `2-1`, `2-0`
+- **Gana P2**: `0-1` (rival concede / no se presenta), `1-2`, `0-2`
 
-También hay un botón **✖ Deshacer** en cada mesa para borrar el resultado y
-dejarlo pendiente de nuevo.
+La opción **—** deja la mesa pendiente y el botón **✖ Deshacer** (en la cabecera
+de la mesa, junto al estado `⏳ pendiente` / `✅ 2-0`) borra el marcador. En la
+eliminatoria final no se ofrecen las tablas: un cruce necesita ganador.
 
 Guardar el marcador exacto (y no asumir siempre 2-0) hace que **GW% y OGW%**
 se calculen correctamente. Internamente el ganador se deriva del marcador.
 
 ---
 
-## 📤 Compartir por WhatsApp
+## 🖼️ Compartir: carteles e imágenes
 
-Desde el detalle del torneo hay botones para compartir:
+Desde el detalle del torneo:
 
-- **Compartir ronda**: texto con emparejamientos + clasificación de la última ronda.
-- **Compartir clasificación**: solo la tabla de posiciones.
-- **Compartir bracket**: rondas de la eliminatoria y campeón.
+- **📤 Compartir ronda** → cartel con las mesas de la última ronda (incluye el
+  marcador si ya está reportado).
+- **📤 Compartir clasificación** → cartel con el podio y la tabla (Pts, OMW%, GW%).
+- **📤 Compartir bracket** → rondas del Top, resultados y campeón.
 
-Cada botón abre un diálogo con:
-- **📋 Copiar emparejamientos** → copia solo las mesas de la última ronda.
-- **📊 Copiar clasificación** → copia solo la tabla de posiciones.
-- **📋 Copiar todo** → copia emparejamientos + clasificación juntos.
-- **🟢 Abrir WhatsApp** → abre WhatsApp (`wa.me`) con el texto ya escrito.
-- **🖼️ Descargar imagen** → genera un PNG con el contenido (Canvas interno).
-- **📲 Compartir imagen** → usa la Web Share API del móvil para enviar el PNG
-  directamente a WhatsApp (en PC, si no está disponible, descarga el PNG).
+Cada botón abre el **panel de vista previa** (arriba del detalle) con la imagen
+generada por Canvas a 900 px de ancho y el doble de resolución (nítida en móvil),
+y estas acciones:
 
-**Flujo recomendado con WhatsApp de escritorio:** al abrir el diálogo el texto ya
-se copia automáticamente; solo tienes que ir a tu grupo de WhatsApp (Windows) y
-pegar con **Ctrl+V**. También puedes hacer clic en el cuadro de texto para
-seleccionarlo todo y copiarlo con **Ctrl+C**.
+- **📋 Copiar imagen** → copia el PNG al portapapeles (Clipboard API). Si el
+  navegador no permite copiar imágenes, **la descarga automáticamente** y te avisa.
+- **⬇️ Descargar PNG** → guarda el cartel con un nombre descriptivo.
+- **📲 Compartir** → Web Share API del móvil (WhatsApp, Telegram, etc.). En
+  escritorio, si no está disponible, descarga el archivo.
+- **📝 Copiar texto** → copia el texto de siempre (emparejamientos + clasificación)
+  para pegarlo donde quieras.
+- **🟢 WhatsApp** → abre `wa.me` con ese texto ya escrito.
 
-> Nota: la app **no lee los miembros del grupo** (WhatsApp no lo permite). Tú
-> controlas el envío pegando el texto o compartiendo la imagen.
+> En móvil la vista previa mantiene un ancho mínimo y se puede desplazar en
+> horizontal dentro del panel, para que el cartel no se vuelva ilegible.
+
+---
+
+## 🏆 Cartel del campeón
+
+Al **cerrar la fase suiza** (con o sin Top) aparece el panel **“Cartel del campeón”**:
+
+- **Con Top terminado**: muestra al **campeón**, su récord y puntos de la fase suiza,
+  el **finalista** (perdedor de la final) y el **mejor suizo** (o el 3.º clasificado
+  si el campeón ya era el líder suizo).
+- **Con el Top en juego**: muestra al líder provisional y la etiqueta
+  *“Eliminatoria en curso”*.
+- **Sin Top** (*solo suizo*): el campeón es el líder de la clasificación final y le
+  acompañan el 2.º y el 3.º clasificado.
+
+El cartel se genera a **900 × 620 lógicos (1800 × 1240 px reales)** con marco dorado,
+tira de los cinco colores de maná y la misma tipografía que la app. Se puede
+**copiar, descargar o compartir** con los mismos botones que el resto de carteles.
+
+---
+
+## 🎨 Interfaz y tema
+
+- Tema **“Arena arcana”**: fondo obsidiana, paneles de carta oscura, oro y una
+  tira de identidad con los colores de maná (W/U/B/R/G).
+- Tipografías **Cinzel** (títulos) y **Barlow** (interfaz) desde Google Fonts, con
+  alternativas locales si no hay conexión.
+- **Responsive** probado a 360, 390, 768 y 1200 px: sin scroll horizontal, tablas
+  con desplazamiento interno y botones que se reordenan en móvil.
+- **Accesibilidad**: foco visible, `aria-live` en los avisos y respeto a
+  `prefers-reduced-motion`.
+- **Caché controlada**: CSS y JS se cargan con `?v=2.1.0`, así una versión nueva se
+  ve al instante sin tener que borrar la caché del navegador.
+
 
 ---
 
@@ -272,9 +432,86 @@ automáticamente con los ganadores hasta mostrar al **🥇 Campeón**.
 ## 📌 Histórico de versiones
 
 La versión se define en **una sola línea** de `js/app.js` (`APP_VERSION`) y se
-muestra de forma discreta en el pie de la página y en el título de la pestaña.
-Al publicar cambios, sube el número (recomendado *vMAYOR.MENOR.PARCHE*) y añade
-una línea nueva al histórico con su **fecha**.
+muestra en la cabecera, en el pie de la página y en el título de la pestaña.
+Al publicar cambios, sube el número (recomendado *vMAYOR.MENOR.PARCHE*), actualiza
+los `?v=` de `index.html` y añade una línea nueva al histórico con su **fecha**.
+
+### v2.3.0 · 18 de noviembre de 2026
+- **Tira de arte de cabecera**: banda panorámica con las seis ilustraciones entre
+  la cabecera y las pestañas. Se alimenta de `assets/images/banner.jpg` (o
+  `.jpeg`, `.png`, `.webp`, en ese orden) y **se oculta sola** si el archivo no
+  existe, así que la app sigue funcionando igual sin ella.
+- La banda se funde al cargar (`.hero-band.is-loaded`), lleva velo oscuro arriba
+  y abajo, hilo de maná en la base y ajusta su altura en tablet (150 px) y móvil
+  (116 px).
+- Se incluye `assets/images/banner.jpg` (2400×716, ~340 KB) montada a partir de
+  los seis artes de `assets/images/colors/`.
+- `?v=2.3.0` en CSS y JS para refrescar la caché.
+
+### v2.2.2 · 18 de noviembre de 2026
+- **Arte por color desde la carpeta**: la ruta es `assets/images/colors/` y cada
+  archivo se llama como su color (`w`, `u`, `b`, `r`, `g`, `c`), por ejemplo
+  `assets/images/colors/w.jpg` para el blanco. Se aceptan `.jpg`, `.jpeg`, `.png`
+  y `.webp` (**nuevo soporte para `.jpeg`**), en minúsculas y sin espacios.
+- La **Galería arcana** muestra la ruta y los formatos válidos, y el
+  `assets/images/colors/LEEME.txt` recuerda nombres, proporción 2:3 y tamaño.
+- Si falta la imagen de un color, la app pinta el degradado con el símbolo de
+  maná: nunca se rompe por falta de arte.
+- `?v=2.2.2` en CSS y JS para refrescar la caché de `js/art.js`.
+
+### v2.2.1 · 18 de noviembre de 2026
+- **Resultados con desplegable**: cada mesa muestra **P1 a la izquierda**, el
+  **marcador en el centro** y **P2 a la derecha**, con los ocho resultados de un
+  Bo3 (`0-0`, `1-0`, `1-1`, `2-1`, `2-0`, `0-1`, `1-2`, `0-2`) en vez de botones
+  sueltos. Se añade el empate `0-0` a la lógica y el Top no admite tablas.
+- El botón **✖ Deshacer** pasa a la cabecera de la mesa, junto al estado
+  (`⏳ pendiente` / `✅ 2-0`) y al número de mesa.
+- `?v=2.2.1` y pruebas ampliadas: `smoke.js` valida los marcadores y `e2e.js`
+  anota `0-0` y `2-1` con el desplegable y deshace desde la interfaz.
+
+### v2.2.0 · 18 de noviembre de 2026
+- **Contador de mesa** en una pestaña nueva (`🎴 Mesa`): asientos para 2, 3 o 4
+  jugadores (los de enfrente giran 180°), vidas de 20/40 con botones grandes y
+  atajos ±1/±5, veneno con aviso a 10 y nombre/color por jugador.
+- **Maná flotante** por jugador con los seis símbolos oficiales y botones de
+  sumar/restar; botón **🧹 Vaciar maná** para limpiar entre turnos.
+- **Persistencia propia** (`dci.table`) y recuerdo de la última sección abierta
+  (`dci.view`), sin tocar los datos de los torneos.
+- Nuevo módulo `js/table.js`, pestañas `🏆 Torneos / 🎴 Mesa`, `?v=2.2.0` y
+  pruebas ampliadas (`smoke.js` y `e2e.js` cubren el contador).
+
+### v2.1.0 · 18 de noviembre de 2026
+- **Identidad de color por torneo** (W/U/B/R/G/artefacto) opcional al crear el
+  torneo y modificable desde la cabecera del detalle.
+- **Símbolos de maná oficiales** en `assets/images/symbols/`: tira bajo el
+  subtítulo de la cabecera, botones de color, etiqueta del torneo y carteles.
+- **Galería arcana**: arte propio por color con subida desde la app (JPEG
+  comprimido en `localStorage`, clave `dci.art`) y respaldo a
+  `assets/images/colors/<color>.jpg|png|webp`; sin arte se pinta un degradado
+  con el símbolo de maná.
+- **Lista y detalle**: miniatura de arte y acento de color en cada torneo,
+  banner de arte en la cabecera y etiqueta de identidad.
+- **Carteles PNG**: fondo con el arte del torneo, barra de acento y símbolo de
+  maná (ronda, clasificación, bracket y campeón), con guardas para `file://`.
+- **Aviso legal** de Fan Content Policy en el pie y en la galería.
+- **Caché** controlada con `?v=2.1.0` en CSS y JS (incluye el nuevo `js/art.js`).
+- **Pruebas** sin dependencias en `tests/`: `verify.js` (integración estática),
+  `smoke.js` (color/arte y persistencia) y `e2e.js` (Edge headless vía CDP).
+
+### v2.0.0 · 18 de noviembre de 2026
+- **Lavado de cara completo**: tema oscuro **“Arena arcana”** (obsidiana, oro y
+  violeta arcano) con tira de los cinco colores de maná, tipografías **Cinzel +
+  Barlow** y paneles de carta con marco interior.
+- **Nuevo sistema de compartir**: se sustituye el diálogo de texto por un **panel de
+  vista previa** con cartel PNG real, **copiar imagen**, descargar y Web Share.
+  El texto y el enlace de WhatsApp se mantienen como acciones secundarias.
+- **Cartel del campeón** al cerrar el torneo, con campeón, finalista y mejor
+  suizo/3.º clasificado, y versión provisional mientras el Top está en juego.
+- **UX**: toasts no bloqueantes, diálogos de confirmación propios, contador de
+  inscritos/retirados, chip de estado y de ronda, estados vacíos más claros.
+- **Responsive y accesibilidad** revisados a 360/390/768/1200 px, foco visible y
+  `prefers-reduced-motion`.
+- **Caché** controlada con `?v=2.0.0` en CSS y JS.
 
 ### v1.2.0 · 10 de marzo de 2026
 - **Crear torneo aún más limpio**: se elimina también el campo **Tiempo de ronda** de
