@@ -13,7 +13,8 @@
  *     sumar/restar.
  *   - Contador de veneno (avisa al llegar a 10) y reinicio individual.
  *
- * En el centro de la rejilla hay un botón para volver a la pantalla TORNEOS.
+ * En el centro de la rejilla se agrupan el boton para volver a TORNEOS y los
+ * ajustes de la mesa (jugadores, vidas, giro, vaciar mana y reinicio).
  * Todo el estado se guarda en localStorage (clave "dci.table") y se recupera
  * al volver a abrir la app. Este módulo no mezcla nada con los torneos.
  */
@@ -443,19 +444,8 @@ const Table = (() => {
         return board;
     }
 
-    // Botón central que separa los asientos y devuelve a la pantalla TORNEOS.
-    function buildCenterButton() {
-        const btn = makeButton('🏆', {
-            className: 'table-back', action: 'back',
-        }, 'Volver a la pantalla de Torneos');
-        const label = document.createElement('span');
-        label.className = 'table-back-label';
-        label.textContent = 'Torneos';
-        btn.appendChild(label);
-        btn.title = 'Volver a Torneos';
-        return btn;
-    }
-
+    // Los asientos se repintan alrededor de la franja central (controles de
+    // jugadores/vidas y botón Torneos), que se mantiene siempre en el DOM.
     function syncToolbar() {
         if (el.status) {
             el.status.textContent = state.count + ' jugadores · ' + state.startLife + ' vidas';
@@ -508,12 +498,16 @@ const Table = (() => {
         if (!el.seats) return;
         load();
         el.seats.dataset.count = String(state.count);
-        el.seats.innerHTML = '';
+        // La franja central no se toca: solo se sustituyen los asientos.
+        const hub = el.seats.querySelector('.table-hub');
+        Array.prototype.forEach.call(el.seats.querySelectorAll('.seat'), (seat) => {
+            seat.remove();
+        });
         for (let index = 0; index < state.count; index += 1) {
-            el.seats.appendChild(buildSeat(state.players[index], index));
+            const seat = buildSeat(state.players[index], index);
+            if (hub) el.seats.insertBefore(seat, hub);
+            else el.seats.appendChild(seat);
         }
-        // El botón central forma parte de la rejilla y separa los asientos.
-        el.seats.appendChild(buildCenterButton());
         syncValues();
     }
 

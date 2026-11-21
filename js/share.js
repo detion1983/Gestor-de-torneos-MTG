@@ -4,9 +4,11 @@
  *
  *  - Texto formateado: ronda, emparejamientos, clasificacion y bracket.
  *  - Carteles PNG dibujados con Canvas (sin librerias externas):
- *      renderImage(title, subtitle, blocks)  -> ronda / clasificacion / bracket
+ *      renderImage(title, subtitle, blocks)  -> bracket generico
+ *      renderStandingsImage(tournament)      -> clasificacion como tabla
+ *      renderPairingsImage(tournament, n)    -> ronda como tarjetas por mesa
  *      renderChampionsImage(info)            -> cartel del campeon al cerrar
- *    Ambos devuelven un <canvas> listo para copiar, descargar o compartir.
+ *    Todos devuelven un <canvas> listo para copiar, descargar o compartir.
  */
 
 const Share = (() => {
@@ -160,6 +162,17 @@ const Share = (() => {
     function clip(text, max) {
         const s = String(text);
         return s.length > max ? s.slice(0, max - 1) + '…' : s;
+    }
+
+    // Recorta con puntos suspensivos solo si no cabe con la fuente actual.
+    function fitText(ctx, text, maxWidth) {
+        const full = String(text);
+        if (ctx.measureText(full).width <= maxWidth) return full;
+        let cut = full;
+        while (cut.length > 1 && ctx.measureText(cut + '…').width > maxWidth) {
+            cut = cut.slice(0, -1);
+        }
+        return cut + '…';
     }
 
     function font(weight, size, family) {
@@ -394,6 +407,420 @@ const Share = (() => {
         return canvas;
     }
 
+    // ------------------------------------------------------------------
+    // CARTELES CON FORMATO DE TABLA
+    // ------------------------------------------------------------------
+    // La clasificacion y los emparejamientos se dibujan como en la app:
+    // cabeceras de columna, filas alternas, mesas con su estado y el
+    // marcador en el centro. Nada de volcar el texto en lineas monosespaciadas.
+    const BOARD = {
+        width: 960,
+        pad: 36,
+        header: 146,
+        footer: 44,
+    };
+
+    function boardMeta(tournament) {
+        return [formatDate(tournament.date), tournament.location]
+            .filter(Boolean).join(' · ');
+    }
+
+    function createBoardCanvas(height) {
+        const DPR = 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = BOARD.width * DPR;
+        canvas.height = height * DPR;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(DPR, DPR);
+        return { canvas: canvas, ctx: ctx };
+    }
+
+    function paintBoardHeader(ctx, width, height, tournament, kicker, options) {
+        const PAD = BOARD.pad;
+        drawBackdrop(ctx, width, height, options.art, options.accent);
+        drawManaStrip(ctx, 0, 0, width, 8);
+        drawAccentBar(ctx, width, 8, options.accent);
+
+        if (options.symbol) {
+            drawSymbol(ctx, options.symbol, width - PAD - 44, 22, 44, 0.95);
+        }
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle = C.goldDim;
+        ctx.font = font(700, 11, SANS);
+        letterSpace(ctx, 3);
+        ctx.fillText(String(kicker || '').toUpperCase(), PAD, 50);
+        letterSpace(ctx, 0);
+
+        const titleWidth = width - PAD * 2 - (options.symbol ? 58 : 0);
+        ctx.fillStyle = C.goldBright;
+        fitFont(ctx, tournament.name || 'Torneo', titleWidth, 32, 20, 700, SERIF);
+        ctx.fillText(tournament.name || 'Torneo', PAD, 84);
+
+        ctx.fillStyle = C.dim;
+        ctx.font = font(400, 15, SANS);
+        ctx.fillText(clip(boardMeta(tournament) || 'Magic: The Gathering', 90), PAD, 108);
+
+        ctx.strokeStyle = C.line;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(PAD, 126);
+        ctx.lineTo(width - PAD, 126);
+        ctx.stroke();
+
+        return BOARD.header;
+    }
+
+    function paintBoardFooter(ctx, width, height, options) {
+        const PAD = BOARD.pad;
+        ctx.textBaseline = 'alphabetic';
+        ctx.font = font(400, 12, SANS);
+        ctx.fillStyle = 'rgba(217, 178, 95, 0.6)';
+        ctx.textAlign = 'left';
+        ctx.fillText('DCI Reporter · Magic: The Gathering', PAD, height - 22);
+
+        ctx.textAlign = 'right';
+        const stamp = new Date().toLocaleDateString('es-ES');
+        ctx.fillText(options.colorName ? options.colorName + ' · ' + stamp : stamp,
+            width - PAD, height - 22);
+    }
+
+    function standingColumns(innerWidth) {
+        const cols = [
+            { label: '#', width: 52, align: 'center' },
+            { label: 'JUGADOR', width: 0, align: 'left' },
+            { label: 'PTS', width: 70, align: 'center' },
+            { label: 'OMW%', width: 94, align: 'center' },
+            { label: 'GW%', width: 88, align: 'center' },
+            { label: 'OGW%', width: 88, align: 'center' },
+        ];
+        const fixed = cols.reduce((sum, col) => sum + col.width, 0);
+        cols[1].width = innerWidth - fixed;
+        return cols;
+    }
+
+    // Clasificacion con las mismas columnas y jerarquia que #standingsTable.
+    function renderStandingsImage(tournament, options) {
+        options = options || {};
+        const W = BOARD.width;
+        const PAD = BOARD.pad;
+        const inner = W - PAD * 2;
+        const headH = 40;
+        const rowH = 44;
+        const standings = Swiss.calculateStandings(tournament);
+        const rows = Math.max(standings.length, 1);
+        const tableTop = BOARD.header;
+        const tableH = headH + rows * rowH;
+        const height = tableTop + tableH + 18 + BOARD.footer;
+
+        const board = createBoardCanvas(height);
+        const ctx = board.ctx;
+        paintBoardHeader(ctx, W, height, tournament, 'Clasificación', options);
+
+        // Cabecera de la tabla, con el mismo degradado que los <th>.
+        const thead = ctx.createLinearGradient(0, tableTop, 0, tableTop + headH);
+        thead.addColorStop(0, '#322a55');
+        thead.addColorStop(1, '#221b3a');
+        ctx.fillStyle = thead;
+        ctx.fillRect(PAD, tableTop, inner, headH);
+
+        const cols = standingColumns(inner);
+        ctx.save();
+        ctx.textBaseline = 'middle';
+        ctx.font = font(700, 12, SANS);
+        letterSpace(ctx, 1);
+        let hx = PAD;
+        cols.forEach((col) => {
+            ctx.textAlign = col.align;
+            ctx.fillStyle = C.gold;
+            const tx = col.align === 'center' ? hx + col.width / 2 : hx + 12;
+            ctx.fillText(col.label, tx, tableTop + headH / 2 + 1);
+            hx += col.width;
+        });
+        letterSpace(ctx, 0);
+
+        ctx.strokeStyle = C.line;
+        ctx.beginPath();
+        ctx.moveTo(PAD, tableTop + headH - 0.5);
+        ctx.lineTo(PAD + inner, tableTop + headH - 0.5);
+        ctx.stroke();
+
+        // Base opaca bajo las filas: el arte del fondo no debe competir con
+        // los numeros. En la web la tabla vive sobre un panel solido.
+        ctx.fillStyle = 'rgba(11, 9, 19, 0.86)';
+        ctx.fillRect(PAD, tableTop + headH, inner, rows * rowH);
+
+        if (!standings.length) {
+            ctx.textAlign = 'center';
+            ctx.font = font(400, 16, SANS);
+            ctx.fillStyle = C.dim;
+            ctx.fillText('Todavía no hay jugadores inscritos.',
+                PAD + inner / 2, tableTop + headH + rowH / 2);
+        }
+
+        standings.forEach((s, index) => {
+            const ry = tableTop + headH + index * rowH;
+            const mid = ry + rowH / 2;
+            const leader = index === 0;
+
+            ctx.fillStyle = index % 2 === 1
+                ? 'rgba(155, 122, 232, 0.055)'
+                : 'rgba(11, 9, 19, 0.42)';
+            ctx.fillRect(PAD, ry, inner, rowH);
+            if (leader) {
+                ctx.fillStyle = 'rgba(217, 178, 95, 0.14)';
+                ctx.fillRect(PAD, ry, inner, rowH);
+                ctx.fillStyle = C.gold;
+                ctx.fillRect(PAD, ry, 3, rowH);
+            }
+
+            let x = PAD;
+            ctx.textAlign = 'center';
+            ctx.font = font(700, 17, SERIF);
+            ctx.fillStyle = leader ? C.goldBright
+                : (index === 1 ? '#cfd3da' : (index === 2 ? '#c98a5b' : C.gold));
+            ctx.fillText(String(s.rank), x + cols[0].width / 2, mid + 1);
+            x += cols[0].width;
+
+            const nameX = x + 12;
+            const badgeW = s.byeCount ? 66 : 0;
+            const nameMax = cols[1].width - 24 - (badgeW ? badgeW + 8 : 0);
+            ctx.textAlign = 'left';
+            ctx.save();
+            if (s.player.dropped) ctx.globalAlpha = 0.55;
+            fitFont(ctx, s.player.name, nameMax, 17, 13, 600, SANS);
+            const shown = fitText(ctx, s.player.name, nameMax);
+            ctx.fillStyle = C.ink;
+            ctx.fillText(shown, nameX, mid + 1);
+            if (s.player.dropped) {
+                const nameWidth = ctx.measureText(shown).width;
+                ctx.fillStyle = 'rgba(239, 230, 210, 0.65)';
+                ctx.fillRect(nameX, mid + 1, nameWidth, 1);
+            }
+            ctx.restore();
+
+            if (s.byeCount) {
+                const bx = x + cols[1].width - 12 - 60;
+                ctx.fillStyle = 'rgba(217, 178, 95, 0.14)';
+                roundRect(ctx, bx, mid - 10, 60, 20, 7);
+                ctx.fill();
+                ctx.strokeStyle = C.line;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.textAlign = 'center';
+                ctx.font = font(700, 10, SANS);
+                ctx.fillStyle = C.gold;
+                ctx.fillText('BYE x' + s.byeCount, bx + 30, mid + 1);
+            }
+            x += cols[1].width;
+
+            const values = [
+                String(s.matchPoints),
+                fmtPct(s.omw),
+                fmtPct(s.gameWinPct),
+                fmtPct(s.ogw),
+            ];
+            values.forEach((value, valueIndex) => {
+                const col = cols[valueIndex + 2];
+                ctx.textAlign = 'center';
+                ctx.font = valueIndex === 0
+                    ? font(700, 18, SANS)
+                    : font(400, 15, SANS);
+                ctx.fillStyle = valueIndex === 3 ? C.dim : C.ink;
+                if (s.player.dropped) ctx.globalAlpha = 0.55;
+                ctx.fillText(value, x + col.width / 2, mid + 1);
+                ctx.globalAlpha = 1;
+                x += col.width;
+            });
+
+            ctx.strokeStyle = 'rgba(217, 178, 95, 0.1)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(PAD, ry + rowH - 0.5);
+            ctx.lineTo(PAD + inner, ry + rowH - 0.5);
+            ctx.stroke();
+        });
+
+        // Borde exterior de la tabla.
+        ctx.strokeStyle = C.lineSoft;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(PAD + 0.5, tableTop + 0.5, inner - 1, tableH - 1);
+        ctx.restore();
+
+        paintBoardFooter(ctx, W, height, options);
+        return board.canvas;
+    }
+
+    // Ronda con una tarjeta por mesa (P1 · marcador · P2), igual que en la app.
+    function renderPairingsImage(tournament, roundNumber, options) {
+        options = options || {};
+        const W = BOARD.width;
+        const PAD = BOARD.pad;
+        const inner = W - PAD * 2;
+        const bandH = 42;
+        const rowH = 86;
+        const gap = 8;
+        const round = (roundNumber != null)
+            ? tournament.rounds.find((r) => r.number === roundNumber)
+            : tournament.rounds[tournament.rounds.length - 1];
+        const pairings = round ? round.pairings : [];
+        const count = Math.max(pairings.length, 1);
+        const listTop = BOARD.header + bandH + 12;
+        const height = listTop + count * rowH + (count - 1) * gap + 18 + BOARD.footer;
+
+        const board = createBoardCanvas(height);
+        const ctx = board.ctx;
+        paintBoardHeader(ctx, W, height, tournament, 'Emparejamientos', options);
+
+        // Banda de la ronda: nombre a la izquierda y progreso a la derecha.
+        const band = ctx.createLinearGradient(0, BOARD.header, 0, BOARD.header + bandH);
+        band.addColorStop(0, 'rgba(58, 48, 96, 0.9)');
+        band.addColorStop(1, 'rgba(28, 23, 48, 0.95)');
+        ctx.fillStyle = band;
+        ctx.fillRect(PAD, BOARD.header, inner, bandH);
+        ctx.fillStyle = C.gold;
+        ctx.fillRect(PAD, BOARD.header, 3, bandH);
+
+        ctx.save();
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = C.goldBright;
+        ctx.font = font(700, 18, SERIF);
+        ctx.fillText(round ? 'Ronda ' + round.number : 'Sin rondas',
+            PAD + 16, BOARD.header + bandH / 2 + 1);
+
+        let progress = 'Aún no hay mesas';
+        if (round) {
+            const total = Swiss.playableCount(round);
+            const pend = Swiss.pendingCount(round);
+            progress = (total - pend) + '/' + total + ' resultados';
+        }
+        ctx.textAlign = 'right';
+        ctx.font = font(700, 12, SANS);
+        ctx.fillStyle = C.dim;
+        letterSpace(ctx, 1);
+        ctx.fillText(progress.toUpperCase(), W - PAD - 16, BOARD.header + bandH / 2 + 1);
+        letterSpace(ctx, 0);
+        ctx.restore();
+
+        if (!pairings.length) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(11, 9, 19, 0.68)';
+            roundRect(ctx, PAD, listTop, inner, rowH, 8);
+            ctx.fill();
+            ctx.strokeStyle = C.lineSoft;
+            ctx.stroke();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = font(400, 16, SANS);
+            ctx.fillStyle = C.dim;
+            ctx.fillText(round ? 'Esta ronda todavía no tiene mesas.' : 'Genera una ronda para ver los emparejamientos.',
+                PAD + inner / 2, listTop + rowH / 2);
+            ctx.restore();
+        }
+
+        pairings.forEach((pairing, index) => {
+            paintPairingCard(ctx, tournament, pairing, PAD,
+                listTop + index * (rowH + gap), inner, rowH);
+        });
+
+        paintBoardFooter(ctx, W, height, options);
+        return board.canvas;
+    }
+
+    // Tarjeta de una mesa: cabecera con Mesa + estado y fila P1 · marcador · P2.
+    function paintPairingCard(ctx, tournament, pairing, x, y, w, h) {
+        const bye = pairing.p2Id === null;
+        const done = !bye && !!pairing.reported;
+        const pending = !bye && !done;
+
+        const card = ctx.createLinearGradient(x, y, x, y + h);
+        if (bye) {
+            card.addColorStop(0, 'rgba(43, 88, 58, 0.55)');
+            card.addColorStop(1, 'rgba(11, 24, 17, 0.94)');
+        } else {
+            card.addColorStop(0, 'rgba(30, 25, 52, 0.96)');
+            card.addColorStop(1, 'rgba(11, 9, 19, 0.94)');
+        }
+        ctx.fillStyle = card;
+        roundRect(ctx, x, y, w, h, 8);
+        ctx.fill();
+        ctx.strokeStyle = bye ? 'rgba(95, 192, 127, 0.42)' : C.lineSoft;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = bye ? C.green
+            : (pending ? 'rgba(217, 178, 95, 0.65)' : 'rgba(95, 192, 127, 0.55)');
+        ctx.fillRect(x + 1, y + 9, 3, h - 18);
+
+        ctx.save();
+        ctx.textBaseline = 'middle';
+
+        // Etiqueta de la mesa.
+        const tableLabel = 'Mesa ' + pairing.table;
+        ctx.font = font(700, 11, SANS);
+        letterSpace(ctx, 0.5);
+        const pillW = Math.max(72, ctx.measureText(tableLabel.toUpperCase()).width + 20);
+        ctx.fillStyle = 'rgba(8, 7, 13, 0.7)';
+        roundRect(ctx, x + 14, y + 12, pillW, 22, 6);
+        ctx.fill();
+        ctx.strokeStyle = bye ? 'rgba(95, 192, 127, 0.45)' : C.line;
+        ctx.stroke();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = bye ? C.green : C.gold;
+        ctx.fillText(tableLabel.toUpperCase(), x + 14 + pillW / 2, y + 23);
+        letterSpace(ctx, 0);
+
+        // Estado del resultado, como el .pairing-state de la web.
+        const state = bye ? 'BYE · victoria automática'
+            : (done ? '✅ ' + (pairing.score || 'guardado') : '⏳ pendiente');
+        ctx.textAlign = 'left';
+        ctx.font = font(700, 11, SANS);
+        ctx.fillStyle = bye || done ? C.green : C.gold;
+        ctx.fillText(state, x + 14 + pillW + 12, y + 23);
+
+        // Nombres a los lados y marcador en el centro.
+        const boxW = 122;
+        const boxX = x + w / 2 - boxW / 2;
+        const nameMax = boxX - (x + 16) - 20;
+        const p1 = playerName(tournament, pairing.p1Id);
+        const p2 = bye ? 'descansa esta ronda' : playerName(tournament, pairing.p2Id);
+
+        ctx.textAlign = 'left';
+        ctx.font = font(600, 17, SANS);
+        fitFont(ctx, p1, nameMax, 17, 12, 600, SANS);
+        ctx.fillStyle = C.ink;
+        ctx.fillText(fitText(ctx, p1, nameMax), x + 16, y + 61);
+
+        ctx.textAlign = 'right';
+        fitFont(ctx, p2, nameMax, bye ? 14 : 17, 12, bye ? 400 : 600, SANS);
+        ctx.fillStyle = bye ? C.dim : C.ink;
+        ctx.fillText(fitText(ctx, p2, nameMax), x + w - 16, y + 61);
+
+        const scoreText = bye ? 'BYE' : (done ? (pairing.score || 'OK') : '—');
+        ctx.fillStyle = done || bye
+            ? 'rgba(95, 192, 127, 0.14)'
+            : 'rgba(8, 7, 13, 0.45)';
+        roundRect(ctx, boxX, y + 46, boxW, 30, 8);
+        ctx.fill();
+        if (pending) {
+            ctx.setLineDash([5, 4]);
+            ctx.strokeStyle = C.line;
+        } else {
+            ctx.strokeStyle = 'rgba(95, 192, 127, 0.55)';
+        }
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.textAlign = 'center';
+        ctx.font = font(700, 18, MONO);
+        ctx.fillStyle = bye || done ? C.green : C.dim;
+        ctx.fillText(scoreText, x + w / 2, y + 62);
+        ctx.restore();
+    }
+
     function paintAwardCard(ctx, x, y, w, h, data) {
         const grad = ctx.createLinearGradient(x, y, x, y + h);
         grad.addColorStop(0, 'rgba(42, 35, 74, 0.94)');
@@ -579,6 +1006,32 @@ const Share = (() => {
         });
     }
 
+    // Copia un PNG al portapapeles para pegarlo directamente (Ctrl+V en el PC,
+    // mantener pulsado > Pegar en el movil). Acepta el Blob o una Promise<Blob>:
+    // Safari/iOS solo permiten usar el portapapeles dentro del gesto del usuario
+    // y, en cambio, admiten que la imagen se termine de dibujar despues.
+    // Devuelve Promise<boolean>: false si el navegador no sabe copiar imagenes.
+    function copyImageToClipboard(blobOrPromise) {
+        const clipboard = navigator.clipboard;
+        if (!clipboard || !clipboard.write || typeof window.ClipboardItem !== 'function') {
+            return Promise.resolve(false);
+        }
+        const blobPromise = Promise.resolve(blobOrPromise);
+        const item = (data) => new window.ClipboardItem({ 'image/png': data });
+        let first;
+        try {
+            first = clipboard.write([item(blobPromise)]);
+        } catch (err) {
+            // Navegadores que no admiten promesas dentro de ClipboardItem:
+            // se reintenta abajo con el Blob ya resuelto.
+            first = Promise.reject(err);
+        }
+        return first.then(() => true).catch(() => blobPromise
+            .then((blob) => clipboard.write([item(blob)]))
+            .then(() => true)
+            .catch(() => false));
+    }
+
     return {
         roundText,
         pairingsOnlyText,
@@ -586,8 +1039,11 @@ const Share = (() => {
         bracketText,
         whatsappLink,
         renderImage,
+        renderStandingsImage,
+        renderPairingsImage,
         renderChampionsImage,
         canvasToBlob,
+        copyImageToClipboard,
         playerName,
         formatDate,
     };

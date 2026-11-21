@@ -190,6 +190,43 @@ function connect(wsUrl) {
             brand.icons.some((href) => /favicon\.png$/.test(href)),
             brand.icons.join(', '));
 
+        // 0c) Tema claro por defecto, con conmutador persistente.
+        const theme = await evaluate(`
+            const root = document.documentElement;
+            const btn = document.getElementById('themeToggle');
+            const average = (value) => {
+                const rgb = (value.match(/\\d+/g) || []).slice(0, 3).map(Number);
+                return rgb.length === 3 ? (rgb[0] + rgb[1] + rgb[2]) / 3 : 0;
+            };
+            const info = {
+                lightByDefault: !root.classList.contains('theme-dark'),
+                lightBg: average(getComputedStyle(document.body).backgroundColor),
+                label: document.getElementById('themeLabel').textContent,
+            };
+            btn.click();
+            await new Promise((r) => setTimeout(r, 60));
+            info.darkAfterClick = root.classList.contains('theme-dark');
+            info.darkBg = average(getComputedStyle(document.body).backgroundColor);
+            info.storedDark = localStorage.getItem('dci.theme');
+            info.darkLabel = document.getElementById('themeLabel').textContent;
+            info.darkMeta = document.querySelector('meta[name="theme-color"]').content;
+            btn.click();
+            await new Promise((r) => setTimeout(r, 60));
+            info.lightAfterClick = !root.classList.contains('theme-dark');
+            info.storedLight = localStorage.getItem('dci.theme');
+            info.lightLabel = document.getElementById('themeLabel').textContent;
+            return info;
+        `);
+        check('la app abre en tema claro por defecto',
+            theme.lightByDefault && theme.lightBg > 200, theme.lightBg);
+        check('el conmutador cambia a oscuro y lo guarda',
+            theme.darkAfterClick && theme.darkBg < 80 && theme.storedDark === 'dark' &&
+            theme.darkLabel === 'Claro' && theme.darkMeta === '#08070d',
+            [theme.darkBg, theme.storedDark, theme.darkLabel, theme.darkMeta].join(' · '));
+        check('el conmutador vuelve al claro y lo guarda',
+            theme.lightAfterClick && theme.storedLight === 'light' && theme.lightLabel === 'Oscuro',
+            theme.storedLight + ' · ' + theme.lightLabel);
+
         // 1) Crear torneo con identidad de color por la interfaz.
         const created = await evaluate(`
             document.getElementById('name').value = 'Liga Arcana Test';
@@ -276,6 +313,71 @@ function connect(wsUrl) {
             changed.dataColor + ' ' + changed.accent);
         check('etiqueta pasa a Verde', /Verde/.test(changed.tag), changed.tag);
         check('la lista también pasa a Verde', /Verde/.test(changed.listLabel), changed.listLabel);
+
+        // 3b) Cierre y reapertura de inscripción.
+        const registration = await evaluate(`
+            const add = (name) => {
+                document.getElementById('playerName').value = name;
+                document.getElementById('playerForm').dispatchEvent(
+                    new Event('submit', { bubbles: true, cancelable: true }));
+            };
+            add('Ana');
+            add('Luis');
+            await new Promise((r) => setTimeout(r, 100));
+            const btn = document.getElementById('toggleRegistrationButton');
+            const before = {
+                text: btn.textContent.trim(),
+                badge: document.getElementById('playerBadge').textContent.trim(),
+                formHidden: document.getElementById('playerForm').hidden,
+            };
+            btn.click();
+            await new Promise((r) => setTimeout(r, 80));
+            const modal = document.querySelector('.modal-overlay');
+            const modalTitle = modal ? modal.querySelector('h3').textContent : '';
+            if (modal) modal.querySelector('.btn.primary').click();
+            await new Promise((r) => setTimeout(r, 120));
+            const storedClosed = Storage.getTournaments()[0];
+            const closed = {
+                stored: storedClosed.registrationClosed,
+                formHidden: document.getElementById('playerForm').hidden,
+                noteHidden: document.getElementById('registrationClosedNote').hidden,
+                label: btn.textContent.trim(),
+                removeDisabled: document.querySelector('#playerList .btn.danger').disabled,
+            };
+            add('Bloqueado');
+            await new Promise((r) => setTimeout(r, 100));
+            const blockedCount = Storage.getTournaments()[0].players.length;
+            btn.click();
+            await new Promise((r) => setTimeout(r, 120));
+            const reopened = {
+                stored: Storage.getTournaments()[0].registrationClosed,
+                formHidden: document.getElementById('playerForm').hidden,
+                noteHidden: document.getElementById('registrationClosedNote').hidden,
+                label: btn.textContent.trim(),
+            };
+            return { before, modalTitle, closed, blockedCount, reopened,
+                total: Storage.getTournaments()[0].players.length };
+        `);
+        check('la inscripción se cierra con confirmación',
+            registration.before.text === '🔒 Cerrar inscripción' &&
+            /Cerrar la inscripción/.test(registration.modalTitle || '') &&
+            registration.closed.stored === true,
+            JSON.stringify(registration));
+        check('cerrada: formulario y aviso, y no entran más jugadores',
+            registration.closed.formHidden === true &&
+            registration.closed.noteHidden === false &&
+            /Reabrir inscripción/.test(registration.closed.label) &&
+            registration.closed.removeDisabled === true &&
+            registration.blockedCount === 2 && registration.total === 2,
+            [registration.closed.formHidden, registration.closed.noteHidden,
+                registration.closed.removeDisabled, registration.blockedCount,
+                registration.total].join(' · '));
+        check('se puede reabrir la inscripción',
+            registration.reopened.stored === false &&
+            registration.reopened.formHidden === false &&
+            registration.reopened.noteHidden === true &&
+            /Cerrar inscripción/.test(registration.reopened.label),
+            JSON.stringify(registration.reopened));
 
         // 4) La lista y el detalle cargan el arte por defecto del color.
         const defaultArt = await evaluate(`
@@ -483,22 +585,74 @@ function connect(wsUrl) {
         check('cartel del campeón generado', seeded.awardsCanvas === 1, seeded.awardsCanvas);
         check('cartel del campeón sin manchar', seeded.awardsPng > 1000, 'png=' + seeded.awardsPng);
 
-        // 7) Cartel de clasificación: canvas real y exportable a PNG.
+        // 7) Ronda y clasificación: un único icono copia el PNG al portapapeles.
         const poster = await evaluate(`
-            document.getElementById('shareStandingsButton').click();
-            await new Promise((r) => setTimeout(r, 600));
-            const canvas = document.querySelector('#sharePreview canvas');
-            const info = { present: !!canvas };
-            if (canvas) {
-                info.w = canvas.width; info.h = canvas.height;
-                try { info.png = canvas.toDataURL('image/png').length; info.tainted = false; }
-                catch (err) { info.tainted = true; info.png = 0; }
+            const calls = [];
+            window.__copyCalls = calls;
+            const fakeWrite = async (items) => {
+                const item = items && items[0];
+                const data = item && item.data && item.data['image/png'];
+                const blob = await data;
+                calls.push({ type: blob && blob.type, size: blob && blob.size });
+            };
+            try {
+                Object.defineProperty(navigator, 'clipboard', {
+                    value: { write: fakeWrite }, configurable: true });
+            } catch (err) {
+                navigator.clipboard.write = fakeWrite;
             }
-            return info;
+            try {
+                window.ClipboardItem = function (data) { this.data = data; };
+            } catch (err) {
+                Object.defineProperty(window, 'ClipboardItem', {
+                    value: function (data) { this.data = data; }, configurable: true });
+            }
+
+            const standingsBtn = document.getElementById('shareStandingsButton');
+            const roundBtn = document.getElementById('shareRoundButton');
+            const before = {
+                standingsText: standingsBtn.textContent.trim(),
+                roundText: roundBtn.textContent.trim(),
+                panelHidden: document.getElementById('sharePanel').hidden,
+                panelButtons: ['shareCopyImage', 'shareDownload', 'shareNative',
+                    'shareCopyText', 'shareWhatsapp'].filter((id) => document.getElementById(id)).length,
+            };
+            standingsBtn.click();
+            await new Promise((r) => setTimeout(r, 700));
+            const afterStandings = {
+                calls: calls.length,
+                panelHidden: document.getElementById('sharePanel').hidden,
+                toast: Array.from(document.querySelectorAll('#toastStack .toast'))
+                    .map((t) => t.textContent).join(' | '),
+            };
+            roundBtn.click();
+            await new Promise((r) => setTimeout(r, 700));
+            return {
+                before: before,
+                afterStandings: afterStandings,
+                calls: calls.slice(),
+                panelHidden: document.getElementById('sharePanel').hidden,
+                toast: Array.from(document.querySelectorAll('#toastStack .toast'))
+                    .map((t) => t.textContent).join(' | '),
+            };
         `);
-        check('cartel de clasificación generado', poster.present && poster.w > 500 && poster.h > 300,
-            poster.w + 'x' + poster.h);
-        check('el canvas del cartel no queda manchado', poster.tainted === false, 'png=' + poster.png);
+        check('compartir ronda y clasificación es un solo icono',
+            poster.before.standingsText === '📋' && poster.before.roundText === '📋',
+            poster.before.standingsText + ' / ' + poster.before.roundText);
+        check('copiar clasificación directo al portapapeles',
+            poster.afterStandings.calls === 1 &&
+            poster.afterStandings.panelHidden === true &&
+            /Imagen copiada/.test(poster.afterStandings.toast || ''),
+            JSON.stringify(poster.afterStandings));
+        check('copiar ronda directo al portapapeles',
+            poster.calls.length === 2 && poster.calls.every((c) =>
+                c.type === 'image/png' && c.size > 1000),
+            JSON.stringify(poster.calls));
+        check('el panel de vista previa sigue cerrado para ronda/clasificación',
+            poster.before.panelHidden === true && poster.panelHidden === true &&
+            poster.before.panelButtons >= 1,
+            [poster.before.panelHidden, poster.panelHidden,
+                poster.before.panelButtons].join(' · '));
 
         // 8) Mesa a pantalla completa: 2-4 asientos, maná integrado y navegación.
         const mesa = await evaluate(`
@@ -525,6 +679,24 @@ function connect(wsUrl) {
                 lifeButtons: seat(0).querySelectorAll('.seat-life [data-action="life"]').length,
                 quickSteps: seat(0).querySelectorAll('.quick-step').length,
                 back: !!document.querySelector('#tableSeats .table-back'),
+                hub: !!document.querySelector('#tableSeats .table-hub'),
+                backInsideHub: !!document.querySelector('#tableSeats .table-hub .table-back'),
+                controlsInHub: ['tableCount', 'tableStartLife', 'tableRotate',
+                    'tableManaClear', 'tableReset'].every((id) =>
+                    !!document.querySelector('#tableSeats .table-hub #' + id)),
+                topbarControls: document.querySelectorAll('.table-topbar #tableCount, ' +
+                    '.table-topbar #tableStartLife, .table-topbar #tableRotate, ' +
+                    '.table-topbar #tableManaClear, .table-topbar #tableReset').length,
+                themeInTopbar: !!document.querySelector('.table-topbar #tableThemeToggle'),
+                hubBetween: (() => {
+                    const hubRect = document.querySelector('#tableSeats .table-hub').getBoundingClientRect();
+                    const topRect = seat(0).getBoundingClientRect();
+                    const bottomRect = seat(2).getBoundingClientRect();
+                    return hubRect.top >= topRect.bottom - 1 &&
+                        hubRect.bottom <= bottomRect.top + 1;
+                })(),
+                themeToggle: !!document.getElementById('tableThemeToggle'),
+                themeLabel: (document.getElementById('tableThemeLabel') || {}).textContent || '',
                 startLife: document.getElementById('tableStartLife').value,
             };
             seat(0).querySelector('[data-action="life"][data-delta="1"]').click();
@@ -588,7 +760,16 @@ function connect(wsUrl) {
             mesa.poison + ' · ' + mesa.lethal);
         check('el maná suma por color y jugador', mesa.manaR === 2 && mesa.manaW === 1,
             mesa.manaR + ' rojo · ' + mesa.manaW + ' blanco');
-        check('el botón central separa los jugadores y vuelve a Torneos', mesa.back === true);
+        check('el botón central separa los jugadores y vuelve a Torneos', mesa.back === true &&
+            mesa.backInsideHub === true);
+        check('los ajustes de la mesa viven en el centro entre los asientos',
+            mesa.hub === true && mesa.controlsInHub === true && mesa.hubBetween === true,
+            [mesa.hub, mesa.controlsInHub, mesa.hubBetween].join(' · '));
+        check('la barra superior de la Mesa deja solo título, estado y tema',
+            mesa.topbarControls === 0 && mesa.themeInTopbar === true,
+            mesa.topbarControls + ' · ' + mesa.themeInTopbar);
+        check('la Mesa también permite cambiar de tema', mesa.themeToggle === true,
+            mesa.themeLabel);
         check('cambiar el color del asiento pinta la ilustración de fondo',
             mesa.color === 'g' && mesa.artFrame === true && mesa.artImage === true,
             mesa.color + ' · ' + mesa.artFrame + ' · ' + mesa.artImage);
@@ -644,6 +825,63 @@ function connect(wsUrl) {
             back.tableHidden && !back.bodyTable && back.listHidden && back.detailVisible &&
             back.tabActive, JSON.stringify(back));
         check('la sección activa se guarda al volver', back.view === 'tournaments', back.view);
+
+        // 8b) Un torneo configurado sin Top se cierra como suizo puro: no debe
+        // arrastrar el valor oculto del selector y generar un Top 2/Top 4.
+        const swissOnly = await evaluate(`
+            const base = Storage.getTournaments()[0];
+            const t = Object.assign({}, base, {
+                status: 'open',
+                topSize: 0,
+                roundCount: 0,
+                registrationClosed: false,
+                rounds: [],
+                playoff: null,
+            });
+            Storage.upsertTournament(t);
+            document.getElementById('backButton').click();
+            await new Promise((r) => setTimeout(r, 150));
+            const item = document.querySelector('#tournamentList .meta');
+            if (!item) return { error: 'no aparece el torneo en la lista' };
+            item.click();
+            await new Promise((r) => setTimeout(r, 250));
+            const btn = document.getElementById('closeSwissButton');
+            const select = document.getElementById('closeTopSize');
+            const before = {
+                button: btn.textContent.trim(),
+                selectHidden: select.hidden,
+                selectDisabled: select.disabled,
+            };
+            btn.click();
+            await new Promise((r) => setTimeout(r, 80));
+            const modal = document.querySelector('.modal-overlay');
+            const modalTitle = modal ? modal.querySelector('h3').textContent : '';
+            const modalText = modal ? modal.textContent : '';
+            if (modal) modal.querySelector('.btn.primary').click();
+            await new Promise((r) => setTimeout(r, 250));
+            const stored = Storage.getTournaments()[0];
+            return {
+                before: before,
+                modalTitle: modalTitle,
+                modalText: modalText,
+                status: stored.status,
+                playoff: !!stored.playoff,
+                chip: (document.getElementById('awardsChip').textContent || '').trim(),
+            };
+        `);
+        check('sin Top el selector desaparece y el botón cierra sin eliminatoria',
+            !swissOnly.error && swissOnly.before.selectHidden === true &&
+            swissOnly.before.selectDisabled === true &&
+            /Cerrar suiza/.test(swissOnly.before.button) &&
+            !/Generar Top|Top 2|Top 4|Top 8/.test(swissOnly.before.button),
+            JSON.stringify(swissOnly.before || swissOnly));
+        check('cerrar un suizo sin Top no genera ningún Top',
+            /Cerrar la fase suiza/.test(swissOnly.modalTitle || '') &&
+            !/Top 2|Top 4|Top 8/.test(swissOnly.modalText || '') &&
+            swissOnly.playoff === false && swissOnly.status === 'closed' &&
+            /CAMPEÓN SUIZO/.test(swissOnly.chip || ''),
+            JSON.stringify([swissOnly.modalTitle, swissOnly.playoff, swissOnly.status,
+                swissOnly.chip]));
 
         // 9) Excepciones y errores de consola durante toda la sesión.
         await sleep(300);

@@ -10,10 +10,15 @@ const App = (() => {
     // Cambia SOLO esta linea al publicar una version nueva.
     // Formato recomendado: vMAYOR.MENOR.PARCHE  (p. ej. v1.1.0)
     // ------------------------------------------------------------------
-    const APP_VERSION = 'v2.4.0';
+    const APP_VERSION = 'v2.4.3';
 
     // Clave donde se recuerda la ultima seccion abierta (torneos o mesa).
     const VIEW_KEY = 'dci.view';
+
+    // Tema visual: claro (pergamino) por defecto y oscuro opcional. La clave
+    // coincide con el script de arranque de index.html para evitar destellos.
+    const THEME_KEY = 'dci.theme';
+    const THEME_COLORS = { light: '#f4eee2', dark: '#08070d' };
 
     // Tira de arte de cabecera: panoramica opcional con las seis ilustraciones.
     // Se prueba cada formato en orden y se usa el primero que exista.
@@ -37,6 +42,14 @@ const App = (() => {
         el.tabTournaments = document.getElementById('tabTournaments');
         el.tabTable = document.getElementById('tabTable');
 
+        // Conmutador de tema: cabecera y barra de la mesa (pantalla completa).
+        el.themeToggle = document.getElementById('themeToggle');
+        el.themeIcon = document.getElementById('themeIcon');
+        el.themeLabel = document.getElementById('themeLabel');
+        el.tableThemeToggle = document.getElementById('tableThemeToggle');
+        el.tableThemeIcon = document.getElementById('tableThemeIcon');
+        el.tableThemeLabel = document.getElementById('tableThemeLabel');
+
         el.tournamentForm = document.getElementById('tournamentForm');
         el.tournamentList = document.getElementById('tournamentList');
         el.emptyTournaments = document.getElementById('emptyTournaments');
@@ -46,6 +59,8 @@ const App = (() => {
         el.knownPlayers = document.getElementById('knownPlayers');
         el.playerList = document.getElementById('playerList');
         el.emptyPlayers = document.getElementById('emptyPlayers');
+        el.toggleRegistrationButton = document.getElementById('toggleRegistrationButton');
+        el.registrationClosedNote = document.getElementById('registrationClosedNote');
 
         el.detailTitle = document.getElementById('detailTitle');
         el.roundsContainer = document.getElementById('roundsContainer');
@@ -151,6 +166,7 @@ const App = (() => {
 
     function init() {
         cacheDom();
+        applyTheme(loadTheme(), false);
         applyVersion();
         mountHeroBand();
         bindEvents();
@@ -185,6 +201,57 @@ const App = (() => {
 
     function baseTitle() {
         return 'Torneos de Magic · DCI Reporter ' + APP_VERSION;
+    }
+
+    // ----------------------------------------------------------------
+    // TEMA CLARO / OSCURO
+    // El tema claro es el de por defecto. La preferencia se guarda en
+    // localStorage y se comparte entre la cabecera y la Mesa.
+    // ----------------------------------------------------------------
+    function loadTheme() {
+        try {
+            return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
+        } catch (err) {
+            return 'light';
+        }
+    }
+
+    function currentTheme() {
+        return document.documentElement.classList.contains('theme-dark') ? 'dark' : 'light';
+    }
+
+    function applyTheme(theme, persist) {
+        const dark = theme === 'dark';
+        document.documentElement.classList.toggle('theme-dark', dark);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', dark ? THEME_COLORS.dark : THEME_COLORS.light);
+
+        const icon = dark ? '☀️' : '🌙';
+        const label = dark ? 'Claro' : 'Oscuro';
+        const action = dark ? 'Cambiar al tema claro' : 'Cambiar al tema oscuro';
+        [[el.themeToggle, el.themeIcon, el.themeLabel],
+            [el.tableThemeToggle, el.tableThemeIcon, el.tableThemeLabel]].forEach((parts) => {
+            const button = parts[0];
+            const iconNode = parts[1];
+            const labelNode = parts[2];
+            if (iconNode) iconNode.textContent = icon;
+            if (labelNode) labelNode.textContent = label;
+            if (!button) return;
+            button.setAttribute('aria-label', action);
+            button.setAttribute('title', action);
+        });
+
+        if (persist) {
+            try {
+                localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light');
+            } catch (err) { /* sin persistencia: el tema sigue funcionando */ }
+        }
+    }
+
+    function toggleTheme() {
+        applyTheme(currentTheme() === 'dark' ? 'light' : 'dark', true);
     }
 
     // ----------------------------------------------------------------
@@ -364,6 +431,9 @@ const App = (() => {
     function bindEvents() {
         el.tournamentForm.addEventListener('submit', onCreateTournament);
         el.playerForm.addEventListener('submit', onAddPlayer);
+        if (el.toggleRegistrationButton) {
+            el.toggleRegistrationButton.addEventListener('click', onToggleRegistration);
+        }
         el.generateRoundButton.addEventListener('click', onGenerateRound);
         el.undoRoundButton.addEventListener('click', onUndoRound);
         el.backButton.addEventListener('click', showTournamentList);
@@ -379,8 +449,12 @@ const App = (() => {
             el.tabTable.addEventListener('click', () => showSection('table'));
         }
 
-        el.shareRoundButton.addEventListener('click', onShareRound);
-        el.shareStandingsButton.addEventListener('click', onShareStandings);
+        // Tema claro/oscuro (cabecera y barra de la Mesa).
+        if (el.themeToggle) el.themeToggle.addEventListener('click', toggleTheme);
+        if (el.tableThemeToggle) el.tableThemeToggle.addEventListener('click', toggleTheme);
+
+        el.shareRoundButton.addEventListener('click', onCopyRoundImage);
+        el.shareStandingsButton.addEventListener('click', onCopyStandingsImage);
         el.shareBracketButton.addEventListener('click', onShareBracket);
         el.undoPlayoffButton.addEventListener('click', onUndoPlayoffRound);
         el.closeSwissButton.addEventListener('click', onCloseSwiss);
@@ -583,6 +657,11 @@ const App = (() => {
         event.preventDefault();
         const tournament = Storage.getTournament(currentTournamentId);
         if (!tournament) return;
+        if (tournament.registrationClosed) {
+            toast('La inscripción está cerrada. Pulsa «🔓 Reabrir inscripción» para añadir jugadores.',
+                'error');
+            return;
+        }
         const player = Swiss.addPlayer(tournament, el.playerName.value);
         if (!player) {
             toast('Nombre vacío o jugador ya inscrito.', 'error');
@@ -595,6 +674,37 @@ const App = (() => {
         refreshKnownPlayers();
         updatePlayerCount();
         toast(player.name + ' inscrito', 'success');
+    }
+
+    // Cierra o reabre las inscripciones. Mientras están cerradas no se pueden
+    // añadir ni quitar jugadores; los retiros (drop) siguen disponibles.
+    async function onToggleRegistration() {
+        const tournament = Storage.getTournament(currentTournamentId);
+        if (!tournament) return;
+
+        const closing = !tournament.registrationClosed;
+        if (closing && tournament.players.length === 0) {
+            toast('Inscribe al menos un jugador antes de cerrar la inscripción.', 'error');
+            return;
+        }
+        if (closing) {
+            const ok = await askConfirm({
+                title: '¿Cerrar la inscripción?',
+                message: 'Con ' + tournament.players.length + ' jugador' +
+                    (tournament.players.length === 1 ? '' : 'es') +
+                    ' inscrito' + (tournament.players.length === 1 ? '' : 's') +
+                    '. No se podrán añadir ni quitar jugadores hasta que la reabras.',
+                okLabel: 'Cerrar inscripción',
+                danger: false,
+            });
+            if (!ok) return;
+        }
+
+        tournament.registrationClosed = closing;
+        Storage.upsertTournament(tournament);
+        renderDetail();
+        toast(closing ? 'Inscripción cerrada' : 'Inscripción reabierta',
+            closing ? 'info' : 'success');
     }
 
     function onGenerateRound() {
@@ -930,6 +1040,7 @@ const App = (() => {
 
         // Sincroniza el selector de Top del toolbar con lo configurado.
         if (el.closeTopSize) {
+            el.closeTopSize.disabled = !top;
             if (top) {
                 el.closeTopSize.value = String(top);
                 el.closeTopSize.hidden = false;
@@ -1015,6 +1126,20 @@ const App = (() => {
     function renderPlayers(tournament) {
         el.playerList.innerHTML = '';
         el.emptyPlayers.hidden = tournament.players.length > 0;
+        const closed = !!tournament.registrationClosed;
+
+        if (el.playerForm) el.playerForm.hidden = closed;
+        if (el.registrationClosedNote) el.registrationClosedNote.hidden = !closed;
+        if (el.toggleRegistrationButton) {
+            el.toggleRegistrationButton.textContent = closed
+                ? '🔓 Reabrir inscripción'
+                : '🔒 Cerrar inscripción';
+            el.toggleRegistrationButton.title = closed
+                ? 'Permite volver a añadir o quitar jugadores'
+                : 'Bloquea las altas y bajas de jugadores';
+            el.toggleRegistrationButton.classList.toggle('ghost', !closed);
+            el.toggleRegistrationButton.classList.toggle('danger', closed);
+        }
 
         if (el.playerBadge) {
             const active = tournament.players.filter((p) => !p.dropped).length;
@@ -1045,11 +1170,17 @@ const App = (() => {
             const remove = document.createElement('button');
             remove.className = 'btn danger small';
             remove.textContent = 'Quitar';
-            remove.disabled = tournament.rounds.length > 0;
+            remove.disabled = closed || tournament.rounds.length > 0;
             if (tournament.rounds.length > 0) {
                 remove.title = 'No se puede quitar tras empezar las rondas';
+            } else if (closed) {
+                remove.title = 'La inscripción está cerrada: reábrela para quitar jugadores';
             }
             remove.addEventListener('click', () => {
+                if (tournament.registrationClosed) {
+                    toast('La inscripción está cerrada: reábrela para quitar jugadores.', 'error');
+                    return;
+                }
                 tournament.players = tournament.players.filter((p) => p.id !== player.id);
                 Storage.upsertTournament(tournament);
                 renderDetail();
@@ -1404,20 +1535,22 @@ const App = (() => {
     }
 
     // ----------------------------------------------------------------
-    // COMPARTIR (WhatsApp / PNG)
+    // COMPARTIR (PNG / portapapeles)
     // ----------------------------------------------------------------
-    function onShareRound() {
+    // Ronda y clasificacion se copian directamente al portapapeles con un unico
+    // boton-icono. El bracket conserva su dialogo con texto e imagen.
+    function onCopyRoundImage() {
         const tournament = Storage.getTournament(currentTournamentId);
         if (!tournament || tournament.rounds.length === 0) {
             toast('Todavía no hay rondas para compartir.', 'error');
             return;
         }
-        const text = Share.roundText(tournament, null, { includeStandings: true });
-        openShare('Ronda ' + tournament.rounds.length,
-            [{ heading: 'Emparejamientos', lines: pairLines(tournament) }], text);
+        const round = tournament.rounds[tournament.rounds.length - 1];
+        copyGeneratedImage(tournament, 'Ronda ' + round.number, null,
+            'pairings', round.number);
     }
 
-    function onShareStandings() {
+    function onCopyStandingsImage() {
         const tournament = Storage.getTournament(currentTournamentId);
         if (!tournament) return;
         const standings = Swiss.calculateStandings(tournament);
@@ -1425,11 +1558,33 @@ const App = (() => {
             toast('Aún no hay clasificación que compartir.', 'error');
             return;
         }
-        const lines = standings.map((s) =>
-            s.rank + 'º  ' + s.player.name + '  —  ' + s.matchPoints +
-            ' pts   OMW ' + fmtPct(s.omw) + ' · GW ' + fmtPct(s.gameWinPct));
-        openShare('Clasificación', [{ heading: 'Clasificación', lines: lines }],
-            Share.standingsOnlyText(tournament));
+        copyGeneratedImage(tournament, 'Clasificación', null, 'standings');
+    }
+
+    // Genera el cartel y lo deja en el portapapeles en el MISMO clic. La
+    // promesa del PNG se pasa a ClipboardItem para que Safari/iOS sigan dentro
+    // del gesto del usuario aunque el canvas se dibuje despues. Si el navegador
+    // no sabe copiar imagenes, se descarga como respaldo.
+    // `kind` elige el dibujo de tabla: clasificacion o emparejamientos.
+    function copyGeneratedImage(tournament, title, blocks, kind, roundNumber) {
+        const canvasPromise = kind
+            ? createTableCanvas(tournament, kind, roundNumber)
+            : createShareCanvas(tournament, title, blocks);
+        const blobPromise = canvasPromise.then((canvas) => Share.canvasToBlob(canvas));
+        const filename = 'magic-' + slug(title) + '.png';
+
+        Share.copyImageToClipboard(blobPromise).then((ok) => {
+            if (ok) {
+                toast('Imagen copiada al portapapeles. Pégala con Ctrl+V.', 'success');
+                return null;
+            }
+            return canvasPromise.then((canvas) => {
+                downloadCanvas(canvas, filename);
+                toast('No se pudo copiar: imagen descargada', 'info');
+            });
+        }).catch(() => {
+            toast('No se pudo generar la imagen en este navegador.', 'error');
+        });
     }
 
     function onShareBracket() {
@@ -1455,16 +1610,6 @@ const App = (() => {
         openShare('Eliminación Top ' + tournament.playoff.size, blocks, text);
     }
 
-    function pairLines(tournament) {
-        const round = tournament.rounds[tournament.rounds.length - 1];
-        return round.pairings.map((pr) => {
-            const p2 = pr.p2Id === null ? '(BYE)' : playerName(tournament, pr.p2Id);
-            const score = pr.reported && pr.score ? '   (' + pr.score + ')' : '';
-            return 'Mesa ' + pr.table + '  ' + playerName(tournament, pr.p1Id) +
-                ' vs ' + p2 + score;
-        });
-    }
-
     async function onCloseSwiss() {
         const tournament = Storage.getTournament(currentTournamentId);
         if (!tournament) return;
@@ -1480,12 +1625,15 @@ const App = (() => {
             return;
         }
 
-        // Tamano del Top: manda el que el organizador elija en el selector del
-        // toolbar; si no lo cambia, se usa el configurado en el torneo.
+        // Tamano del Top: si el torneo esta configurado SIN Top, se cierra como
+        // suizo puro aunque el selector oculto conserve un valor antiguo. Con
+        // Top, manda el selector del toolbar y si no, lo configurado.
         const configured = Swiss.plannedTop(tournament);
-        const selected = el.closeTopSize
-            ? Swiss.normalizeTopSize(el.closeTopSize.value)
-            : configured;
+        const selected = configured
+            ? (el.closeTopSize
+                ? (Swiss.normalizeTopSize(el.closeTopSize.value) || configured)
+                : configured)
+            : 0;
 
         if (!selected) {
             // Sin eliminatoria final: se cierra el torneo como suizo puro.
@@ -1555,12 +1703,21 @@ const App = (() => {
         container.appendChild(canvas);
     }
 
-    // Genera el cartel y abre el panel de vista previa con sus acciones.
-    function openShare(title, blocks, text) {
-        const tournament = Storage.getTournament(currentTournamentId);
-        if (!tournament) return;
+    // Carga el arte y el color del torneo una sola vez para cualquier cartel.
+    function shareArtOptions(tournament) {
+        const color = Art.normalize(tournament.color);
+        // El arte se carga antes de dibujar. Si no hay arte (o no se puede usar
+        // en canvas) el cartel se genera igual con el fondo del tema.
+        return Promise.all([Art.posterImage(color), Art.posterSymbol(color)]).then((images) => ({
+            art: images[0],
+            symbol: images[1],
+            accent: color ? Art.meta(color).accent : '',
+            colorName: color ? Art.shortLabel(color) : '',
+        }));
+    }
 
-        const tournamentId = tournament.id;
+    // Prepara el cartel generico (bracket) con el arte y el color del torneo.
+    function createShareCanvas(tournament, title, blocks) {
         const subtitle = [formatDate(tournament.date), tournament.location]
             .filter(Boolean).join(' · ');
         // Evita repetir el titulo como encabezado del primer bloque (sin borrar
@@ -1570,19 +1727,29 @@ const App = (() => {
                 ? '' : b.heading,
             lines: b.lines || [],
         }));
-        const color = Art.normalize(tournament.color);
 
-        // El arte se carga antes de dibujar. Si no hay arte (o no se puede usar
-        // en canvas) el cartel se genera igual con el fondo del tema.
-        Promise.all([Art.posterImage(color), Art.posterSymbol(color)]).then((images) => {
+        return shareArtOptions(tournament).then((options) =>
+            Share.renderImage(title, subtitle, cleanBlocks, options)
+        );
+    }
+
+    // Cartel con formato de tabla para la clasificacion o una ronda.
+    function createTableCanvas(tournament, kind, roundNumber) {
+        return shareArtOptions(tournament).then((options) => (
+            kind === 'standings'
+                ? Share.renderStandingsImage(tournament, options)
+                : Share.renderPairingsImage(tournament, roundNumber, options)
+        ));
+    }
+
+    // Genera el cartel y abre el panel de vista previa con sus acciones.
+    function openShare(title, blocks, text) {
+        const tournament = Storage.getTournament(currentTournamentId);
+        if (!tournament) return;
+
+        const tournamentId = tournament.id;
+        createShareCanvas(tournament, title, blocks).then((canvas) => {
             if (currentTournamentId !== tournamentId) return;
-            const canvas = Share.renderImage(title, subtitle, cleanBlocks, {
-                art: images[0],
-                symbol: images[1],
-                accent: color ? Art.meta(color).accent : '',
-                colorName: color ? Art.shortLabel(color) : '',
-            });
-
             shareState = {
                 title: title,
                 text: text,
@@ -1606,20 +1773,9 @@ const App = (() => {
         shareState = null;
     }
 
-    // Copia una imagen PNG al portapapeles. Devuelve una promesa con true/false.
-    function copyImageToClipboard(canvas, filename) {
-        return Share.canvasToBlob(canvas).then((blob) => {
-            if (!blob) return false;
-            if (!navigator.clipboard || typeof ClipboardItem === 'undefined') return false;
-            try {
-                return navigator.clipboard
-                    .write([new ClipboardItem({ 'image/png': blob })])
-                    .then(() => true)
-                    .catch(() => false);
-            } catch (err) {
-                return false;
-            }
-        }).catch(() => false);
+    // Copia una imagen PNG ya dibujada al portapapeles.
+    function copyImageToClipboard(canvas) {
+        return Share.copyImageToClipboard(Share.canvasToBlob(canvas));
     }
 
     function downloadCanvas(canvas, filename) {
@@ -1648,7 +1804,7 @@ const App = (() => {
 
     function copyShareCanvas() {
         if (!shareState) return;
-        copyImageToClipboard(shareState.canvas, shareState.filename).then((ok) => {
+        copyImageToClipboard(shareState.canvas).then((ok) => {
             if (ok) {
                 toast('Imagen copiada al portapapeles', 'success');
             } else {
@@ -1839,7 +1995,7 @@ const App = (() => {
 
     function copyAwardsCanvas() {
         if (!awardsState) return;
-        copyImageToClipboard(awardsState.canvas, awardsState.filename).then((ok) => {
+        copyImageToClipboard(awardsState.canvas).then((ok) => {
             if (ok) {
                 toast('Cartel copiado al portapapeles', 'success');
             } else {

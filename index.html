@@ -3,22 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#08070d">
+    <meta name="theme-color" content="#f4eee2">
     <meta name="description" content="Gestor de torneos de Magic: The Gathering: inscripción, rondas suizas, Top y clasificación con desempates DCI.">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Torneos MTG">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="assets/images/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="64x64" href="assets/images/favicon.png">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/images/icons/apple-touch-icon.png">
-    <meta name="msapplication-TileColor" content="#08070d">
+    <meta name="msapplication-TileColor" content="#f4eee2">
     <meta name="msapplication-TileImage" content="assets/images/icons/icon-192.png">
     <title>Gestión de Torneos de Magic</title>
+    <script>
+        // Tema claro por defecto. Si el usuario eligió el oscuro, se aplica
+        // antes de pintar la pagina para evitar un destello de tema claro.
+        try {
+            if (localStorage.getItem('dci.theme') === 'dark') {
+                document.documentElement.classList.add('theme-dark');
+            }
+        } catch (err) { /* localStorage no disponible */ }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=2.4.0">
+    <link rel="stylesheet" href="css/styles.css?v=2.4.3">
 </head>
 <body>
     <!-- Fondo opcional (assets/images/background.jpg) y halos de maná -->
@@ -51,8 +60,14 @@
                 </div>
             </div>
             <div class="header-side">
-                <span class="version-chip" id="appVersionChip">v2.4.0</span>
+                <span class="version-chip" id="appVersionChip">v2.4.3</span>
                 <span class="format-chip">Suizo · Top</span>
+                <button id="themeToggle" class="theme-toggle" type="button"
+                        aria-label="Cambiar al tema oscuro"
+                        title="Cambiar al tema oscuro">
+                    <span id="themeIcon" class="theme-toggle-icon" aria-hidden="true">🌙</span>
+                    <span id="themeLabel" class="theme-toggle-label">Oscuro</span>
+                </button>
             </div>
         </div>
     </header>
@@ -113,7 +128,7 @@
                         El torneo se crea con los datos básicos. El <strong>número de rondas</strong>,
                         el <strong>Top</strong> y el <strong>tiempo de ronda</strong> los configuras
                         ya dentro del torneo, en su <strong>Configuración</strong>, mientras no cierres
-                        las inscripciones. Al generar cada ronda el cronómetro arranca solo.
+                        la fase suiza. Al generar cada ronda el cronómetro arranca solo.
                     </p>
                     <div class="actions-row">
                         <button type="submit" class="btn primary">➕ Guardar torneo</button>
@@ -178,7 +193,11 @@
             <div class="panel">
                 <div class="panel-head">
                     <h3>Inscripción de jugadores</h3>
-                    <span class="chip" id="playerBadge">0 inscritos</span>
+                    <div class="panel-head-actions">
+                        <span class="chip" id="playerBadge">0 inscritos</span>
+                        <button id="toggleRegistrationButton" class="btn ghost small" type="button"
+                                title="Bloquea las altas y bajas de jugadores">🔒 Cerrar inscripción</button>
+                    </div>
                 </div>
                 <form id="playerForm" class="inline-form">
                     <input type="text" id="playerName" list="knownPlayers" placeholder="Nombre del jugador" required
@@ -186,6 +205,10 @@
                     <datalist id="knownPlayers"></datalist>
                     <button type="submit" class="btn primary">Añadir jugador</button>
                 </form>
+                <p id="registrationClosedNote" class="closed-note" hidden>
+                    🔒 Inscripción cerrada. Pulsa <strong>Reabrir inscripción</strong> para añadir
+                    o quitar jugadores.
+                </p>
                 <p class="hint">Los jugadores ya inscritos en torneos previos aparecen como sugerencia.</p>
                 <ul id="playerList" class="player-list"></ul>
                 <p id="emptyPlayers" class="empty">Sin jugadores inscritos.</p>
@@ -229,7 +252,9 @@
                 <div class="toolbar">
                     <button id="generateRoundButton" class="btn primary" type="button">🎲 Generar siguiente ronda</button>
                     <button id="undoRoundButton" class="btn danger" type="button">🔙 Deshacer última ronda</button>
-                    <button id="shareRoundButton" class="btn ghost" type="button">📤 Compartir ronda</button>
+                    <button id="shareRoundButton" class="btn ghost small icon-only" type="button"
+                            aria-label="Copiar imagen de la ronda"
+                            title="Copiar imagen de la ronda al portapapeles">📋</button>
                 </div>
                 <div id="roundsContainer"></div>
                 <p class="hint">
@@ -305,7 +330,9 @@
                     </table>
                 </div>
                 <div class="toolbar toolbar-end">
-                    <button id="shareStandingsButton" class="btn ghost" type="button">📤 Compartir clasificación</button>
+                    <button id="shareStandingsButton" class="btn ghost small icon-only" type="button"
+                            aria-label="Copiar imagen de la clasificación"
+                            title="Copiar imagen de la clasificación al portapapeles">📋</button>
                     <select id="closeTopSize" title="Cambia el tipo de Top si lo necesitas">
                         <option value="2">Top 2</option>
                         <option value="4">Top 4</option>
@@ -339,41 +366,58 @@
                         <h2 class="table-title">🎴 Mesa</h2>
                         <span class="chip" id="tableStatus">4 jugadores · 20 vidas</span>
                     </div>
-                    <div class="table-toolbar" role="group" aria-label="Ajustes de la mesa">
-                        <div class="seg-group">
-                            <span class="seg-label">Jugadores</span>
-                            <div class="seg" id="tableCount" role="group"
-                                 aria-label="Número de jugadores">
-                                <button class="seg-btn" type="button" data-count="2">2</button>
-                                <button class="seg-btn" type="button" data-count="3">3</button>
-                                <button class="seg-btn is-active" type="button" data-count="4"
-                                        aria-pressed="true">4</button>
+                    <button id="tableThemeToggle" class="table-action" type="button"
+                            aria-label="Cambiar al tema oscuro"
+                            title="Cambiar al tema oscuro">
+                        <span id="tableThemeIcon" aria-hidden="true">🌙</span>
+                        <span id="tableThemeLabel" class="table-action-label">Oscuro</span>
+                    </button>
+                </div>
+                <div class="table-seats" id="tableSeats" data-count="4">
+                    <!-- Los ajustes viven en la fila central, entre los asientos,
+                         junto al botón que vuelve a Torneos. -->
+                    <div class="table-hub" id="tableHub">
+                        <button class="table-back" type="button" data-action="back"
+                                aria-label="Volver a la pantalla de Torneos" title="Volver a Torneos">
+                            <span aria-hidden="true">🏆</span>
+                            <span class="table-back-label">Torneos</span>
+                        </button>
+                        <div class="table-toolbar table-hub-controls" role="group"
+                             aria-label="Ajustes de la mesa">
+                            <div class="seg-group">
+                                <span class="seg-label">Jugadores</span>
+                                <div class="seg" id="tableCount" role="group"
+                                     aria-label="Número de jugadores">
+                                    <button class="seg-btn" type="button" data-count="2">2</button>
+                                    <button class="seg-btn" type="button" data-count="3">3</button>
+                                    <button class="seg-btn is-active" type="button" data-count="4"
+                                            aria-pressed="true">4</button>
+                                </div>
                             </div>
+                            <label class="table-field">
+                                <span class="table-field-label">Vidas</span>
+                                <select id="tableStartLife" aria-label="Vidas iniciales">
+                                    <option value="20">20</option>
+                                    <option value="40">40</option>
+                                </select>
+                            </label>
+                            <label class="table-check" title="Girar los asientos de enfrente">
+                                <input type="checkbox" id="tableRotate" checked>
+                                <span class="table-check-label">Girar</span>
+                            </label>
+                            <button id="tableManaClear" class="table-action" type="button"
+                                    aria-label="Vaciar el maná flotante" title="Vaciar maná">
+                                <span aria-hidden="true">🧹</span>
+                                <span class="table-action-label">Maná</span>
+                            </button>
+                            <button id="tableReset" class="table-action table-reset" type="button"
+                                    aria-label="Reiniciar mesa" title="Reiniciar mesa">
+                                <span id="tableResetIcon" aria-hidden="true">🔄</span>
+                                <span id="tableResetLabel" class="table-reset-text">Reiniciar mesa</span>
+                            </button>
                         </div>
-                        <label class="table-field">
-                            <span class="table-field-label">Vidas</span>
-                            <select id="tableStartLife" aria-label="Vidas iniciales">
-                                <option value="20">20</option>
-                                <option value="40">40</option>
-                            </select>
-                        </label>
-                        <label class="table-check" title="Girar los asientos de enfrente">
-                            <input type="checkbox" id="tableRotate" checked>
-                            <span class="table-check-label">Girar</span>
-                        </label>
-                        <button id="tableManaClear" class="table-action" type="button"
-                                aria-label="Vaciar el maná flotante" title="Vaciar maná">
-                            <span aria-hidden="true">🧹</span>
-                            <span class="table-action-label">Maná</span>
-                        </button>
-                        <button id="tableReset" class="table-action table-reset" type="button"
-                                aria-label="Reiniciar mesa" title="Reiniciar mesa">
-                            <span id="tableResetIcon" aria-hidden="true">🔄</span>
-                            <span id="tableResetLabel" class="table-reset-text">Reiniciar mesa</span>
-                        </button>
                     </div>
                 </div>
-                <div class="table-seats" id="tableSeats" data-count="4"></div>
             </div>
         </section>
     </main>
@@ -395,7 +439,7 @@
             <span class="pip pip-g"></span>
         </div>
         <p>Datos guardados en tu navegador (localStorage). <span id="playerCount"></span></p>
-        <p class="app-version">Versión <span id="appVersion">v2.4.0</span></p>
+        <p class="app-version">Versión <span id="appVersion">v2.4.3</span></p>
         <p class="legal">
             Proyecto no oficial y sin ánimo de lucro. Magic: The Gathering y sus símbolos son
             propiedad de Wizards of the Coast y se usan bajo su
@@ -411,15 +455,15 @@
         <p class="noscript">Esta aplicación necesita JavaScript activado para funcionar.</p>
     </noscript>
 
-    <script src="js/storage.js?v=2.4.0"></script>
-    <script src="js/swiss.js?v=2.4.0"></script>
-    <script src="js/art.js?v=2.4.0"></script>
-    <script src="js/share.js?v=2.4.0"></script>
-    <script src="js/timer.js?v=2.4.0"></script>
-    <script src="js/table.js?v=2.4.0"></script>
-    <script src="js/app.js?v=2.4.0"></script>
-    <script src="js/install.js?v=2.4.0"></script>
-    <script src="js/pwa-update.js?v=2.4.0"></script>
+    <script src="js/storage.js?v=2.4.3"></script>
+    <script src="js/swiss.js?v=2.4.3"></script>
+    <script src="js/art.js?v=2.4.3"></script>
+    <script src="js/share.js?v=2.4.3"></script>
+    <script src="js/timer.js?v=2.4.3"></script>
+    <script src="js/table.js?v=2.4.3"></script>
+    <script src="js/app.js?v=2.4.3"></script>
+    <script src="js/install.js?v=2.4.3"></script>
+    <script src="js/pwa-update.js?v=2.4.3"></script>
 </body>
 </html>
 

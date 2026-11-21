@@ -15,7 +15,7 @@
  * CACHE_VERSION se sube junto con APP_VERSION con tools/bump-version.py.
  */
 
-const CACHE_VERSION = 'v2.4.0';
+const CACHE_VERSION = 'v2.4.3';
 const CACHE_NAME = 'dci-reporter-' + CACHE_VERSION;
 
 // Recursos imprescindibles: si falta uno, la app no podría abrirse offline.

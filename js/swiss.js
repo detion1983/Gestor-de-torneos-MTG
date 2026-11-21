@@ -37,6 +37,8 @@ const Swiss = (() => {
             topSize: normalizeTopSize(data.topSize),
             roundMinutes: normalizeRoundMinutes(data.roundMinutes),
             status: 'open', // 'open' | 'running' | 'closed'
+            // Inscripcion cerrada por el organizador: bloquea altas y bajas.
+            registrationClosed: false,
             createdAt: new Date().toISOString(),
             players: [], // { id, name, dropped }
             rounds: [],  // [{ number, pairings: [{ table, p1Id, p2Id, result, reported }] }]

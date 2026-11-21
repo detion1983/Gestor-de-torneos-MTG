@@ -1,6 +1,6 @@
 # Gestión de Torneos de Magic 🏆
 
-**Versión actual: v2.4.0** · 21 de noviembre de 2026
+**Versión actual: v2.4.3** · 21 de noviembre de 2026
 
 Gestor de torneos de **Magic: The Gathering** (sistema suizo, resultados y clasificación).
 Permite crear torneos, inscribir jugadores, generar rondas por sistema **suizo**,
@@ -22,8 +22,10 @@ La versión se muestra de forma discreta en el pie de la página.
 - **Crear torneos** con los datos básicos: nombre, fecha, lugar y organizador.
 - **Configuración ajustable**: el **número de rondas**, el **Top** (sin Top / Top 2 /
   Top 4 / Top 8) y el **tiempo de ronda** se definen ya dentro del torneo, mientras
-  no cierres las inscripciones.
-- **Inscripción de jugadores** con sugerencias de jugadores ya conocidos.
+  no cierres la fase suiza.
+- **Inscripción de jugadores** con sugerencias de jugadores ya conocidos y botón
+  **🔒 Cerrar inscripción / 🔓 Reabrir** para bloquear altas y bajas cuando la
+  lista esté completa.
 - **Recordatorio de inscripciones**: los jugadores usados se guardan y se
   sugieren automáticamente en torneos futuros (autocompletado).
 - **Emparejamiento suizo** por puntuación, evitando repetir rival.
@@ -37,8 +39,13 @@ La versión se muestra de forma discreta en el pie de la página.
 - **Persistencia** automática en el navegador (`localStorage`).
 - **Cartel del campeón**: al cerrar el torneo se genera un póster con el campeón,
   el finalista y el mejor suizo/3.º clasificado, listo para copiar o descargar.
-- **Compartir como imagen**: ronda, clasificación y bracket se generan como carteles
-  PNG con la estética de la app (copiar al portapapeles, descargar o compartir).
+- **Compartir como imagen**: un único botón **📋** en **Rondas** y en
+  **Clasificación** genera el cartel y lo copia al portapapeles en el mismo clic;
+  si el navegador no permite copiar imágenes, lo descarga. La clasificación se
+  dibuja como una **tabla** (columnas, filas, líder, byes y retirados) y la ronda
+  como **tarjetas por mesa** (Mesa, estado y P1 · marcador · P2), igual que en la
+  web. El **bracket** conserva su diálogo con vista previa, descarga, compartir
+  nativo y texto.
 - **Avisos no bloqueantes**: toasts para confirmar acciones y diálogos propios para
   lo delicado (eliminar torneo, deshacer rondas, cerrar la suiza).
 - **Contadores en vivo**: inscritos/retirados, torneos guardados y ronda actual.
@@ -52,9 +59,15 @@ La versión se muestra de forma discreta en el pie de la página.
   **2, 3 o 4 jugadores** (los de enfrente giran 180°), vidas de **20** (o 40
   Commander) con solo **− / +**, **veneno** con aviso a 10 y **maná flotante
   W/U/B/R/G/C integrado en el asiento** de cada jugador. El desplegable de color
-  pinta la ilustración de `assets/images/colors/` como fondo de su región y el
-  botón central devuelve a **Torneos**. Todo se guarda en `localStorage` (clave
-  `dci.table`).
+  pinta la ilustración de `assets/images/colors/` como fondo de su región. Los
+  ajustes de la mesa (número de jugadores, vidas, giro, vaciar maná y reinicio)
+  se agrupan en la **franja central entre los asientos**, junto al botón
+  **🏆 Torneos**, para dejar libre la barra superior. Todo se guarda en
+  `localStorage` (clave `dci.table`).
+- **Tema claro y oscuro**: la app abre en un tema **claro tipo pergamino**, más
+  luminoso y legible, con el oro y los colores de maná como acentos. El botón
+  **🌙 Oscuro / ☀️ Claro** de la cabecera (y de la barra de la Mesa) cambia al
+  tema oscuro original y recuerda la elección en `localStorage` (`dci.theme`).
 
 ---
 
@@ -78,7 +91,7 @@ direcciones o menú **⋮ → Instalar aplicación**) y desde **Safari en iPhone
   **🔄 Hay una versión nueva disponible** con el botón **Actualizar**. Al pulsarlo
   se activa el service worker nuevo y la página se recarga una sola vez.
 - Para subir la versión de código y de caché:
-  `python tools/bump-version.py 2.4.0`.
+  `python tools/bump-version.py 2.4.3`.
 - El logo oficial está en `assets/images/logo.jpg` y se usa en la cabecera, el
   instalador y los iconos. Si lo cambias, regenera los iconos con
   `python tools/make-icons.py` (192, 512, maskable, Apple Touch y favicon).
@@ -131,7 +144,7 @@ js/storage.js       Persistencia (localStorage) y registro de jugadores
 js/swiss.js         Lógica: emparejamiento suizo, resultados y standings
 js/art.js           Identidad de color, arte por defecto y símbolos de maná
 js/table.js         Mesa inmersiva: vidas, veneno y maná integrado (2-4 jugadores)
-js/share.js         Carteles PNG (ronda/clasificación/bracket/campeón) y texto para compartir
+js/share.js         Carteles PNG (tabla de clasificación, mesas de ronda, bracket y campeón) y texto
 js/timer.js         Cronómetro de ronda y avisos acústicos
 js/app.js           Controlador de la interfaz (DOM y eventos)
 js/install.js       Instalador PWA (Android/iPhone) y registro del service worker
@@ -379,26 +392,26 @@ se calculen correctamente. Internamente el ganador se deriva del marcador.
 
 Desde el detalle del torneo:
 
-- **📤 Compartir ronda** → cartel con las mesas de la última ronda (incluye el
-  marcador si ya está reportado).
-- **📤 Compartir clasificación** → cartel con el podio y la tabla (Pts, OMW%, GW%).
-- **📤 Compartir bracket** → rondas del Top, resultados y campeón.
+- **📋 (icono en Rondas)** → genera el cartel de la última ronda como
+  **tarjetas por mesa** (Mesa, estado y P1 · marcador · P2, con el BYE en verde)
+  y lo **copia al portapapeles** en el mismo clic.
+- **📋 (icono en Clasificación)** → genera el cartel con la **tabla completa**
+  (`#`, Jugador, Pts, OMW%, GW%, OGW%), el líder destacado, los byes y los
+  retirados, y lo **copia al portapapeles**.
+- **📤 Compartir bracket** → abre el diálogo del Top con las rondas, resultados
+  y campeón, y sus acciones de texto/imagen.
 
-Cada botón abre el **panel de vista previa** (arriba del detalle) con la imagen
-generada por Canvas a 900 px de ancho y el doble de resolución (nítida en móvil),
-y estas acciones:
+Los dos botones de ronda y clasificación son **un único icono**: no abren el
+panel de vista previa ni ofrecen botones de texto, WhatsApp o descarga. La imagen
+se genera por Canvas a 960 px de ancho y doble resolución con la misma jerarquía
+visual de la app, y se pasa a `ClipboardItem` como promesa para que
+**Safari/iOS** también puedan copiarla dentro del gesto del usuario. Si el
+navegador no admite copiar imágenes, se **descarga automáticamente** y se avisa
+con un toast.
 
-- **📋 Copiar imagen** → copia el PNG al portapapeles (Clipboard API). Si el
-  navegador no permite copiar imágenes, **la descarga automáticamente** y te avisa.
-- **⬇️ Descargar PNG** → guarda el cartel con un nombre descriptivo.
-- **📲 Compartir** → Web Share API del móvil (WhatsApp, Telegram, etc.). En
-  escritorio, si no está disponible, descarga el archivo.
-- **📝 Copiar texto** → copia el texto de siempre (emparejamientos + clasificación)
-  para pegarlo donde quieras.
-- **🟢 WhatsApp** → abre `wa.me` con ese texto ya escrito.
-
-> En móvil la vista previa mantiene un ancho mínimo y se puede desplazar en
-> horizontal dentro del panel, para que el cartel no se vuelva ilegible.
+> El **bracket** conserva el panel de vista previa con **📋 Copiar imagen**,
+> **⬇️ Descargar PNG**, **📲 Compartir**, **📝 Copiar texto** y **🟢 WhatsApp**,
+> igual que en la app de Blood Bowl.
 
 ---
 
@@ -430,7 +443,7 @@ tira de los cinco colores de maná y la misma tipografía que la app. Se puede
   con desplazamiento interno y botones que se reordenan en móvil.
 - **Accesibilidad**: foco visible, `aria-live` en los avisos y respeto a
   `prefers-reduced-motion`.
-- **Caché controlada**: CSS y JS se cargan con `?v=2.3.2`, así una versión nueva se
+- **Caché controlada**: CSS y JS se cargan con `?v=2.4.2`, así una versión nueva se
   ve al instante sin tener que borrar la caché del navegador.
 
 
@@ -471,6 +484,60 @@ La versión se define en **una sola línea** de `js/app.js` (`APP_VERSION`) y se
 muestra en la cabecera, en el pie de la página y en el título de la pestaña.
 Al publicar cambios, sube el número (recomendado *vMAYOR.MENOR.PARCHE*), actualiza
 los `?v=` de `index.html` y añade una línea nueva al histórico con su **fecha**.
+
+### v2.4.3 · 21 de noviembre de 2026
+- **Cartel de clasificación como tabla**: la imagen del botón **📋** reproduce
+  `#standingsTable` con cabeceras (`#`, Jugador, Pts, OMW%, GW%, OGW%), filas
+  alternas, líder en oro, puestos 2.º/3.º coloreados, **badge de BYE** y nombres
+  retirados tachados. Ya no vuelca la clasificación como líneas de texto.
+- **Cartel de ronda como mesas**: el **📋** de Rondas dibuja una tarjeta por mesa
+  con **Mesa**, estado (`✅ 2-1`, `⏳ pendiente` o `BYE · victoria automática`) y
+  la fila **P1 · marcador · P2**, con el BYE en verde. La banda superior muestra
+  la ronda y los resultados reportados (`3/4 resultados`).
+- **Mismo arte y color**: los dos carteles usan `Share.renderStandingsImage` y
+  `Share.renderPairingsImage`, comparten el fondo del torneo, el símbolo de maná
+  y el pie de DCI Reporter, y se generan a **960 px** con doble resolución.
+- **Pruebas**: `node --check`, `verify`, `smoke`, `pwa` y `e2e` siguen en verde.
+- **Caché** controlada con `?v=2.4.3` en CSS y JS.
+
+### v2.4.2 · 21 de noviembre de 2026
+- **Cierre de inscripción**: el panel **Inscripción de jugadores** incorpora
+  **🔒 Cerrar inscripción / 🔓 Reabrir**. Al cerrar se oculta el formulario, se
+  bloquean altas y bajas (los retiros siguen disponibles) y el estado se guarda
+  en el torneo (`registrationClosed`).
+- **Mesa más despejada**: los controles de **jugadores (2/3/4)**, **vidas**,
+  **girar**, **🧹 vaciar maná** y **🔄 reiniciar** se trasladan de la barra
+  superior a la **franja central entre los asientos**, junto al botón
+  **🏆 Torneos**. Arriba solo quedan el título, el estado y el conmutador de tema.
+- **Compartir con un solo icono**: **Rondas** y **Clasificación** sustituyen sus
+  botones de compartir por un **📋** que genera el PNG y lo copia al portapapeles
+  en el mismo clic. Sin panel intermedio ni botones de texto/WhatsApp/descarga;
+  si el navegador no permite copiar, se descarga como respaldo. El bracket
+  mantiene su diálogo, como en Blood Bowl.
+- **Suizo sin Top**: al cerrar un torneo configurado con *Sin Top*, ya no se
+  arrastra el valor oculto del selector ni se genera un **Top 2/Top 4** por error;
+  el torneo finaliza como suizo puro y muestra el cartel **CAMPEÓN SUIZO**.
+- **Pruebas**: `e2e.js` cubre el cierre/reapertura de inscripción, la copia
+  directa de ronda y clasificación, los ajustes en la franja central de la Mesa y
+  el cierre de un suizo sin Top.
+- **Caché** controlada con `?v=2.4.2` en CSS y JS.
+
+### v2.4.1 · 21 de noviembre de 2026
+- **Tema claro «Pergamino arcana»**: la interfaz se aclara por defecto con fondos
+  marfil, paneles claros, texto oscuro y el mismo oro/maná como acentos. Se
+  revisan cabecera, paneles, formularios, listas, clasificación, cronómetro,
+  carteles, avisos, instalación PWA y la Mesa completa.
+- **Conmutador de tema**: botón **🌙 Oscuro / ☀️ Claro** en la cabecera y en la
+  barra superior de la Mesa. La preferencia se guarda en `localStorage`
+  (`dci.theme`) y se aplica antes de pintar para no producir destellos.
+- **Mesa en claro**: los asientos usan fondo pergamino translúcido, arte de color
+  suavizado y contadores con texto oscuro para que vidas, veneno y maná se lean
+  sin esfuerzo.
+- **PWA**: `manifest.json` y `theme-color` usan el fondo claro; el tema oscuro
+  actualiza el color de la barra del navegador al instante.
+- **Pruebas**: `e2e.js` comprueba el tema claro por defecto, el cambio a oscuro,
+  la persistencia y el conmutador dentro de la Mesa.
+- **Caché** controlada con `?v=2.4.1` en CSS y JS.
 
 ### v2.4.0 · 21 de noviembre de 2026
 - **Mesa a pantalla completa**: al abrir **🎴 Mesa** se ocultan cabecera,
