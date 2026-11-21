@@ -10,7 +10,7 @@ const App = (() => {
     // Cambia SOLO esta linea al publicar una version nueva.
     // Formato recomendado: vMAYOR.MENOR.PARCHE  (p. ej. v1.1.0)
     // ------------------------------------------------------------------
-    const APP_VERSION = 'v2.3.0';
+    const APP_VERSION = 'v2.3.1';
 
     // Clave donde se recuerda la ultima seccion abierta (torneos o mesa).
     const VIEW_KEY = 'dci.view';

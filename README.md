@@ -1,18 +1,22 @@
 # Gestión de Torneos de Magic 🏆
 
-**Versión actual: v2.3.0** · 18 de noviembre de 2026
+**Versión actual: v2.3.1** · 21 de noviembre de 2026
 
 Gestor de torneos de **Magic: The Gathering** (sistema suizo, resultados y clasificación).
 Permite crear torneos, inscribir jugadores, generar rondas por sistema **suizo**,
 introducir resultados y consultar la **clasificación** con los desempates oficiales.
 
-Aplicación 100% estática (HTML + CSS + JavaScript), sin servidor ni instalación.
+Aplicación 100% estática (HTML + CSS + JavaScript), sin servidor. Se puede instalar
+como app (PWA), abrir a pantalla completa y usar sin conexión una vez cargada.
 La versión se muestra de forma discreta en el pie de la página.
 
 ---
 
 ## ✨ Funciones
 
+- **📲 Instalable (PWA)**: botón **Instalar app** en móvil/Chrome, apertura a pantalla
+  completa, funcionamiento sin conexión y aviso de **versión nueva** con botón
+  **Actualizar** para aplicar la actualización sin reinstalar.
 - **Crear torneos** con los datos básicos: nombre, fecha, lugar y organizador.
 - **Configuración ajustable**: el **número de rondas**, el **Top** (sin Top / Top 2 /
   Top 4 / Top 8) y el **tiempo de ronda** se definen ya dentro del torneo, mientras
@@ -57,6 +61,24 @@ Solo abre `index.html` en tu navegador. No requiere servidor.
 
 > Opcional: para servir por HTTP, con Python instalado:
 > `python -m http.server` y visita `http://localhost:8000`.
+
+---
+
+## 📲 Instalar como app (PWA)
+
+La app se puede instalar desde **Chrome/Edge** (icono de instalar de la barra de
+direcciones o menú **⋮ → Instalar aplicación**) y desde **Safari en iPhone/iPad**
+(**Compartir → Añadir a pantalla de inicio**). Una vez abierta por **HTTPS** o
+**localhost**, el service worker guarda la interfaz para que funcione sin conexión.
+
+- Si publicas una versión nueva mientras la app está abierta, aparece el aviso
+  **🔄 Hay una versión nueva disponible** con el botón **Actualizar**. Al pulsarlo
+  se activa el service worker nuevo y la página se recarga una sola vez.
+- Para subir la versión de código y de caché:
+  `python tools/bump-version.py 2.3.2`.
+- Los iconos de la PWA se regeneran con `python tools/make-icons.py`.
+- Abrir `index.html` directamente con `file://` no permite instalar la app ni
+  registrar el service worker; usa `python -m http.server` o GitHub Pages.
 
 ---
 
@@ -107,6 +129,12 @@ js/table.js         Contador de mesa: vidas, veneno y maná flotante (2-4 jugado
 js/share.js         Carteles PNG (ronda/clasificación/bracket/campeón) y texto para compartir
 js/timer.js         Cronómetro de ronda y avisos acústicos
 js/app.js           Controlador de la interfaz (DOM y eventos)
+js/install.js       Instalador PWA (Android/iPhone) y registro del service worker
+js/pwa-update.js    Aviso de versión nueva y activación del service worker
+sw.js               Service worker: caché de la app y funcionamiento sin conexión
+manifest.json       Manifiesto PWA: nombre, iconos y pantalla completa
+tools/              Generadores de iconos PWA y subida de versión
+assets/images/icons/  Iconos de instalación (192, 512, maskable y Apple)
 assets/sounds/      Sonidos opcionales del cronómetro (round-*.mp3)
 assets/images/      Imágenes opcionales (logo.png, favicon, fondo)
 assets/images/symbols/  Símbolos de maná oficiales en SVG (w/u/b/r/g/c)
@@ -114,7 +142,7 @@ assets/images/colors/   Arte por color: w/u/b/r/g/c en jpg, jpeg, png o webp
 assets/images/colors/LEEME.txt  Nombres exactos, formatos y medidas del arte
 assets/images/banner.jpg        Tira de cabecera con las seis artes en fila (opcional)
 assets/README.md    Guía de nombres y formatos de sonidos/imágenes
-tests/              Pruebas sin dependencias (verify, smoke y e2e con Edge)
+tests/              Pruebas sin dependencias (verify, smoke, pwa y e2e con Edge)
 tests/README.md     Qué comprueba cada prueba y cómo ejecutarlas
 README.md           Este archivo
 ```
@@ -124,6 +152,7 @@ README.md           Este archivo
 ```bash
 node tests/verify.js   # integración estática: IDs, API de Art, clases y ?v=
 node tests/smoke.js    # lógica de color/arte, storage y export/import
+node tests/pwa.js      # manifest, iconos, service worker, instalador y actualizador
 node tests/e2e.js      # flujo real en Edge headless (python + Edge)
 ```
 
@@ -435,6 +464,20 @@ La versión se define en **una sola línea** de `js/app.js` (`APP_VERSION`) y se
 muestra en la cabecera, en el pie de la página y en el título de la pestaña.
 Al publicar cambios, sube el número (recomendado *vMAYOR.MENOR.PARCHE*), actualiza
 los `?v=` de `index.html` y añade una línea nueva al histórico con su **fecha**.
+
+### v2.3.1 · 21 de noviembre de 2026
+- **PWA instalable**: nuevo `manifest.json`, iconos 192/512/maskable y Apple Touch
+  Icon; botón flotante **Instalar app** para Android/Chrome, iPhone/iPad y escritorio.
+- **Funcionamiento sin conexión**: `sw.js` guarda la interfaz (HTML, CSS, JS, manifest
+  e imágenes de la app) y sirve la última versión desde la red cuando hay conexión.
+- **Aviso de versión nueva**: `js/pwa-update.js` detecta el service worker en espera,
+  muestra **🔄 Hay una versión nueva disponible** y, al pulsar **Actualizar**, activa
+  la versión nueva y recarga una sola vez. Se puede cerrar con **✕** o `Esc`.
+- **Mantenimiento**: `tools/make-icons.py` regenera los iconos y
+  `tools/bump-version.py` sube `APP_VERSION`, `CACHE_VERSION` y los `?v=`.
+- **Pruebas**: nuevo `tests/pwa.js` para manifest, iconos, service worker, instalador
+  y aviso de actualización.
+- **Caché** controlada con `?v=2.3.1` en CSS y JS.
 
 ### v2.3.0 · 18 de noviembre de 2026
 - **Tira de arte de cabecera**: banda panorámica con las seis ilustraciones entre

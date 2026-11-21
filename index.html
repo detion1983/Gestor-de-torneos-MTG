@@ -5,13 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#08070d">
     <meta name="description" content="Gestor de torneos de Magic: The Gathering: inscripción, rondas suizas, Top y clasificación con desempates DCI.">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DCI Reporter">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="assets/images/icons/apple-touch-icon.png">
     <title>Gestión de Torneos de Magic</title>
     <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
     <link rel="alternate icon" href="assets/images/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=2.3.0">
+    <link rel="stylesheet" href="css/styles.css?v=2.3.1">
 </head>
 <body>
     <!-- Fondo opcional (assets/images/background.jpg) y halos de maná -->
@@ -43,7 +48,7 @@
                 </div>
             </div>
             <div class="header-side">
-                <span class="version-chip" id="appVersionChip">v2.3.0</span>
+                <span class="version-chip" id="appVersionChip">v2.3.1</span>
                 <span class="format-chip">Suizo · Top</span>
             </div>
         </div>
@@ -407,6 +412,13 @@
         </section>
     </main>
 
+    <!-- Botón flotante para instalar la web como app (PWA). Lo muestra js/install.js -->
+    <button id="installAppButton" class="install-fab" type="button" data-install-app
+            aria-label="Instalar la app en el móvil">
+        <span class="install-fab-icon" aria-hidden="true">📲</span>
+        <span class="install-fab-label">Instalar app</span>
+    </button>
+
     <footer>
         <div class="mana-strip mana-strip-footer" aria-hidden="true">
             <span class="pip pip-w"></span>
@@ -416,7 +428,7 @@
             <span class="pip pip-g"></span>
         </div>
         <p>Datos guardados en tu navegador (localStorage). <span id="playerCount"></span></p>
-        <p class="app-version">Versión <span id="appVersion">v2.3.0</span></p>
+        <p class="app-version">Versión <span id="appVersion">v2.3.1</span></p>
         <p class="legal">
             Proyecto no oficial y sin ánimo de lucro. Magic: The Gathering y sus símbolos son
             propiedad de Wizards of the Coast y se usan bajo su
@@ -432,13 +444,15 @@
         <p class="noscript">Esta aplicación necesita JavaScript activado para funcionar.</p>
     </noscript>
 
-    <script src="js/storage.js?v=2.3.0"></script>
-    <script src="js/swiss.js?v=2.3.0"></script>
-    <script src="js/art.js?v=2.3.0"></script>
-    <script src="js/share.js?v=2.3.0"></script>
-    <script src="js/timer.js?v=2.3.0"></script>
-    <script src="js/table.js?v=2.3.0"></script>
-    <script src="js/app.js?v=2.3.0"></script>
+    <script src="js/storage.js?v=2.3.1"></script>
+    <script src="js/swiss.js?v=2.3.1"></script>
+    <script src="js/art.js?v=2.3.1"></script>
+    <script src="js/share.js?v=2.3.1"></script>
+    <script src="js/timer.js?v=2.3.1"></script>
+    <script src="js/table.js?v=2.3.1"></script>
+    <script src="js/app.js?v=2.3.1"></script>
+    <script src="js/install.js?v=2.3.1"></script>
+    <script src="js/pwa-update.js?v=2.3.1"></script>
 </body>
 </html>
 

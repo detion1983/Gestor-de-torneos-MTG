@@ -1,12 +1,13 @@
 # Pruebas de Detion DCI Reporter
 
-Tres scripts de Node sin dependencias externas. Se ejecutan desde la raíz del
+Cuatro scripts de Node sin dependencias externas. Se ejecutan desde la raíz del
 proyecto (o con la ruta completa) y devuelven código de salida `1` si algo falla.
 
 | Script | Qué comprueba | Necesita |
 | --- | --- | --- |
 | `node tests/verify.js` | Integración estática: IDs usados en `app.js` y `table.js` que existan en `index.html`, API de `Art.` usada vs. exportada, clases aplicadas con estilo en `styles.css` y versiones de caché `?v=` iguales a `APP_VERSION`. | Nada |
 | `node tests/smoke.js` | Lógica de color/arte sin navegador: catálogo W/U/B/R/G/Artifact, símbolos y nombres de archivo, `normalize`/`meta`/`label`, `applyAccent`, prioridad del arte subido (`dci.art`), color en `createTournament`, persistencia + export/import, marcadores Bo3 (`0-0`…`0-2`, empate sin ganador en el Top) y el estado del contador de mesa (`dci.table`: vidas, veneno, maná, topes y saneado) y la tira de cabecera opcional (`banner.jpg`, `.jpeg`, `.png` o `.webp`). Carga `js/*.js` en un contexto `vm` con stubs de `localStorage` y `document`. | Nada |
+| `node tests/pwa.js` | PWA estática: `manifest.json` válido, iconos 192/512/maskable, manifest enlazado en `index.html`, service worker con `APP_SHELL`, espera (`SKIP_WAITING`), instalador y aviso de actualización. | Nada |
 | `node tests/e2e.js` | Flujo real en Edge headless vía CDP sobre `python -m http.server`: la tira de arte de cabecera (`banner.jpg` 2400×716 y clase `is-loaded`), crear torneo desde la interfaz, miniatura/etiqueta en la lista, detalle (cabecera, banner, selector, galería), cambio de color, subida y borrado de arte con la galería arcana, anotar `0-0` y `2-1` con el **desplegable central** (P1 · marcador · P2) y deshacer, clasificación, panel del campeón, carteles PNG sin *tainting* (`toDataURL`) y la pestaña **Mesa** (asientos, vida, veneno, maná, cambio de color, 2/4 jugadores y reinicio). | Python y Microsoft Edge |
 
 ## Notas
