@@ -17,14 +17,13 @@
 #
 # Recomendaciones:
 #   - Ilustracion vertical (proporcion 2:3) para que el recorte quede bien.
-#   - 600x900 px es suficiente; la app comprime a 820x1230 como maximo.
+#   - 600x900 px es suficiente.
 #   - JPEG de calidad media para que el repositorio no pese demasiado.
 #   - Imagen oscura o con las zonas importantes en el centro: encima se pinta
 #     texto claro, un velo oscuro y el simbolo de mana.
 #
-# Tambien puedes subir el arte desde la propia app (panel "Galeria arcana").
-# Ese arte se guarda en el navegador (localStorage, clave "dci.art"), tiene
-# prioridad sobre esta carpeta y solo existe en ese equipo.
+# El arte es fijo: se cambia sustituyendo estos archivos. La app ya no sube ni
+# guarda imagenes desde el navegador (la antigua "Galeria arcana" se retiro).
 #
 # Si un color no tiene imagen, la app pinta un degradado con el simbolo de mana:
 # nunca se rompe por falta de arte.

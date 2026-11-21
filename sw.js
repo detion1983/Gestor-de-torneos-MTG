@@ -15,7 +15,7 @@
  * CACHE_VERSION se sube junto con APP_VERSION con tools/bump-version.py.
  */
 
-const CACHE_VERSION = 'v2.3.1';
+const CACHE_VERSION = 'v2.4.0';
 const CACHE_NAME = 'dci-reporter-' + CACHE_VERSION;
 
 // Recursos imprescindibles: si falta uno, la app no podría abrirse offline.
@@ -42,10 +42,9 @@ const APP_SHELL = [
 // Arte opcional: se cachea si existe, pero un 404 no cancela la instalación
 // del service worker (el banner y las ilustraciones son adornos).
 const EXTRA_ASSETS = [
-    './assets/images/logo.png',
-    './assets/images/logo.svg',
+    './assets/images/logo.jpg',
     './assets/images/favicon.png',
-    './assets/images/favicon.svg',
+    './assets/images/favicon.ico',
     './assets/images/banner.jpg',
     './assets/images/colors/w.jpeg',
     './assets/images/colors/u.jpeg',

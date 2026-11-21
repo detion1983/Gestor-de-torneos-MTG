@@ -29,6 +29,10 @@ function pngSize(file) {
     return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
 }
 
+function fileSize(file) {
+    return fs.statSync(path.join(root, file)).size;
+}
+
 const app = read('js/app.js');
 const html = read('index.html');
 const css = read('css/styles.css');
@@ -74,12 +78,53 @@ if (manifest) {
     const maskable = icons.find((item) => (item.purpose || '').indexOf('maskable') !== -1);
     ok('manifest icono maskable 512x512',
         Boolean(maskable && maskable.sizes === '512x512'), maskable && maskable.src);
+    if (maskable) {
+        const actual = pngSize(maskable.src.replace(/^\.\//, ''));
+        ok('icono maskable existe y mide 512x512',
+            Boolean(actual && actual.width === 512 && actual.height === 512),
+            actual ? actual.width + 'x' + actual.height : 'falta');
+    }
+
+    ok('logo oficial de la app en assets/images/logo.jpg',
+        fs.existsSync(path.join(root, 'assets/images/logo.jpg')),
+        'assets/images/logo.jpg');
+
+    const iconFiles = [
+        'assets/images/icons/icon-192.png',
+        'assets/images/icons/icon-512.png',
+        'assets/images/icons/icon-maskable-512.png',
+        'assets/images/icons/apple-touch-icon.png',
+    ];
+    iconFiles.forEach((file) => {
+        ok('icono generado con el logo oficial: ' + file,
+            fs.existsSync(path.join(root, file)) && fileSize(file) > 10000,
+            fs.existsSync(path.join(root, file)) ? fileSize(file) + ' bytes' : 'falta');
+    });
+    ok('favicon PNG oficial generado',
+        fs.existsSync(path.join(root, 'assets/images/favicon.png')) &&
+        fileSize('assets/images/favicon.png') > 2000,
+        fs.existsSync(path.join(root, 'assets/images/favicon.png')) ?
+            fileSize('assets/images/favicon.png') + ' bytes' : 'falta');
+    ok('favicon ICO oficial generado',
+        fs.existsSync(path.join(root, 'assets/images/favicon.ico')) &&
+        fileSize('assets/images/favicon.ico') > 5000,
+        fs.existsSync(path.join(root, 'assets/images/favicon.ico')) ?
+            fileSize('assets/images/favicon.ico') + ' bytes' : 'falta');
 }
 
 ok('index enlaza manifest.json', /<link\s+rel="manifest"\s+href="manifest\.json"/.test(html));
 ok('index enlaza apple-touch-icon', /rel="apple-touch-icon"/.test(html));
+ok('index usa el logo oficial en la cabecera',
+    /class="brand-logo"[^>]+src="assets\/images\/logo\.jpg"/.test(html));
+ok('index enlaza favicon oficial (ICO y PNG)',
+    /rel="icon"[^>]+favicon\.ico/.test(html) &&
+    /rel="icon"[^>]+favicon\.png/.test(html));
+ok('index ya no usa los iconos provisionales',
+    !/logo\.svg|favicon\.svg/.test(html));
 ok('index tiene boton de instalacion', /id="installAppButton"/.test(html) &&
     /data-install-app/.test(html));
+ok('el boton de instalacion usa el icono oficial',
+    /install-fab-icon[^>]+icons\/icon-192\.png/.test(html));
 ok('index carga install.js', /js\/install\.js\?v=\d+\.\d+\.\d+/.test(html));
 ok('index carga pwa-update.js', /js\/pwa-update\.js\?v=\d+\.\d+\.\d+/.test(html));
 ok('index no mezcla versiones ?v=', [...new Set([...html.matchAll(/\?v=([0-9.]+)/g)].map((m) => m[1]))]
@@ -111,6 +156,13 @@ ok('todos los archivos de APP_SHELL existen', missingShell.length === 0,
     missingShell.length ? missingShell.join(', ') : shellFiles.length + ' archivos');
 
 const extra = (sw.match(/const EXTRA_ASSETS = \[([\s\S]*?)\];/) || [])[1] || '';
+ok('EXTRA_ASSETS incluye el logo oficial',
+    extra.indexOf("'./assets/images/logo.jpg'") !== -1);
+ok('EXTRA_ASSETS incluye el favicon oficial',
+    extra.indexOf("'./assets/images/favicon.png'") !== -1 &&
+    extra.indexOf("'./assets/images/favicon.ico'") !== -1);
+ok('EXTRA_ASSETS ya no incluye logo.svg ni favicon.svg',
+    extra.indexOf('logo.svg') === -1 && extra.indexOf('favicon.svg') === -1);
 ok('EXTRA_ASSETS incluye el banner', extra.indexOf("'./assets/images/banner.jpg'") !== -1);
 ok('EXTRA_ASSETS incluye el arte por color',
     extra.indexOf("'./assets/images/colors/w.jpeg'") !== -1 &&
@@ -128,6 +180,8 @@ ok('install.js registra sw.js', /serviceWorker\.register\('sw\.js'\)/.test(insta
 ok('install.js escucha beforeinstallprompt', /beforeinstallprompt/.test(install));
 ok('install.js escucha appinstalled', /appinstalled/.test(install));
 ok('install.js atiende data-install-app', /data-install-app/.test(install));
+ok('install.js muestra el logo oficial en la ayuda',
+    /install-help-logo[^>]+logo\.jpg/.test(install));
 
 ok('pwa-update.js vigila updatefound', /updatefound/.test(update));
 ok('pwa-update.js vigila controllerchange', /controllerchange/.test(update));
@@ -141,6 +195,7 @@ ok('estilos del boton instalar', /\.install-fab\s*\{/.test(css) &&
     /body\.pwa-install-ready \.install-fab\s*\{/.test(css));
 ok('estilos de la ayuda de instalacion', /\.install-help\s*\{/.test(css) &&
     /\.install-help-card\s*\{/.test(css));
+ok('estilos del logo en la ayuda de instalacion', /\.install-help-logo\s*\{/.test(css));
 
 console.log('');
 if (failures) {

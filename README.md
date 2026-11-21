@@ -1,6 +1,6 @@
 # Gestión de Torneos de Magic 🏆
 
-**Versión actual: v2.3.1** · 21 de noviembre de 2026
+**Versión actual: v2.4.0** · 21 de noviembre de 2026
 
 Gestor de torneos de **Magic: The Gathering** (sistema suizo, resultados y clasificación).
 Permite crear torneos, inscribir jugadores, generar rondas por sistema **suizo**,
@@ -17,6 +17,8 @@ La versión se muestra de forma discreta en el pie de la página.
 - **📲 Instalable (PWA)**: botón **Instalar app** en móvil/Chrome, apertura a pantalla
   completa, funcionamiento sin conexión y aviso de **versión nueva** con botón
   **Actualizar** para aplicar la actualización sin reinstalar.
+- **🎨 Logo oficial**: `assets/images/logo.jpg` se usa en la cabecera, el diálogo
+  de instalación y los iconos de la PWA (incluido el icono adaptativo de Android).
 - **Crear torneos** con los datos básicos: nombre, fecha, lugar y organizador.
 - **Configuración ajustable**: el **número de rondas**, el **Top** (sin Top / Top 2 /
   Top 4 / Top 8) y el **tiempo de ronda** se definen ya dentro del torneo, mientras
@@ -43,15 +45,16 @@ La versión se muestra de forma discreta en el pie de la página.
 - **Identidad de color por torneo** (blanco, azul, negro, rojo, verde o artefacto):
   su símbolo de maná y su acento tiñen la lista de torneos, la cabecera del torneo
   y los carteles que se comparten.
-- **Galería arcana**: arte propio para cada color. Puedes subir la imagen desde la
-  propia app (se guarda comprimida en el navegador) o copiarla como
+- **Arte por color**: cada identidad usa su ilustración por defecto de
   `assets/images/colors/<color>.jpg` (también `.jpeg`, `.png` y `.webp`); si
   falta, se pinta un degradado con el símbolo de maná oficial.
-- **🎴 Contador de mesa**: pestaña **Mesa** con asientos para **2, 3 o 4
-  jugadores** (los de enfrente giran 180°), vidas de **20** (o 40 Commander) con
-  botones grandes y atajos ±1/±5, **veneno** con aviso a 10, nombre y color por
-  jugador y un panel aparte de **maná flotante** W/U/B/R/G/C. Todo se guarda en
-  `localStorage` (clave `dci.table`).
+- **🎴 Mesa inmersiva**: pestaña **Mesa** a pantalla completa con asientos para
+  **2, 3 o 4 jugadores** (los de enfrente giran 180°), vidas de **20** (o 40
+  Commander) con solo **− / +**, **veneno** con aviso a 10 y **maná flotante
+  W/U/B/R/G/C integrado en el asiento** de cada jugador. El desplegable de color
+  pinta la ilustración de `assets/images/colors/` como fondo de su región y el
+  botón central devuelve a **Torneos**. Todo se guarda en `localStorage` (clave
+  `dci.table`).
 
 ---
 
@@ -75,8 +78,10 @@ direcciones o menú **⋮ → Instalar aplicación**) y desde **Safari en iPhone
   **🔄 Hay una versión nueva disponible** con el botón **Actualizar**. Al pulsarlo
   se activa el service worker nuevo y la página se recarga una sola vez.
 - Para subir la versión de código y de caché:
-  `python tools/bump-version.py 2.3.2`.
-- Los iconos de la PWA se regeneran con `python tools/make-icons.py`.
+  `python tools/bump-version.py 2.4.0`.
+- El logo oficial está en `assets/images/logo.jpg` y se usa en la cabecera, el
+  instalador y los iconos. Si lo cambias, regenera los iconos con
+  `python tools/make-icons.py` (192, 512, maskable, Apple Touch y favicon).
 - Abrir `index.html` directamente con `file://` no permite instalar la app ni
   registrar el service worker; usa `python -m http.server` o GitHub Pages.
 
@@ -124,8 +129,8 @@ index.html          Interfaz principal
 css/styles.css      Estilos
 js/storage.js       Persistencia (localStorage) y registro de jugadores
 js/swiss.js         Lógica: emparejamiento suizo, resultados y standings
-js/art.js           Identidad de color, galería de arte y símbolos de maná
-js/table.js         Contador de mesa: vidas, veneno y maná flotante (2-4 jugadores)
+js/art.js           Identidad de color, arte por defecto y símbolos de maná
+js/table.js         Mesa inmersiva: vidas, veneno y maná integrado (2-4 jugadores)
 js/share.js         Carteles PNG (ronda/clasificación/bracket/campeón) y texto para compartir
 js/timer.js         Cronómetro de ronda y avisos acústicos
 js/app.js           Controlador de la interfaz (DOM y eventos)
@@ -134,9 +139,9 @@ js/pwa-update.js    Aviso de versión nueva y activación del service worker
 sw.js               Service worker: caché de la app y funcionamiento sin conexión
 manifest.json       Manifiesto PWA: nombre, iconos y pantalla completa
 tools/              Generadores de iconos PWA y subida de versión
-assets/images/icons/  Iconos de instalación (192, 512, maskable y Apple)
+assets/images/icons/  Iconos de instalación generados desde logo.jpg
 assets/sounds/      Sonidos opcionales del cronómetro (round-*.mp3)
-assets/images/      Imágenes opcionales (logo.png, favicon, fondo)
+assets/images/      Logo oficial (logo.jpg), favicon y fondos opcionales
 assets/images/symbols/  Símbolos de maná oficiales en SVG (w/u/b/r/g/c)
 assets/images/colors/   Arte por color: w/u/b/r/g/c en jpg, jpeg, png o webp
 assets/images/colors/LEEME.txt  Nombres exactos, formatos y medidas del arte
@@ -197,7 +202,7 @@ para detalles de sonidos e imágenes (logos, favicon, fondos).
 
 ---
 
-## 🎨 Identidad de color y galería arcana
+## 🎨 Identidad de color y arte por defecto
 
 Cada torneo puede llevar una **identidad de color**: blanco, azul, negro, rojo,
 verde o artefacto (`w`, `u`, `b`, `r`, `g`, `c`). Es opcional y se elige al crear
@@ -211,18 +216,14 @@ el torneo o desde la cabecera del torneo (**Color**). Se usa para:
 
 ### Arte por color
 
-El arte se resuelve en este orden:
+Cada color tiene una única imagen por defecto en **`assets/images/colors/`**:
 
-1. **Imagen subida desde la app** (**Galería arcana → 📷 Subir arte**). Se
-   comprime a JPEG (máx. 820×1230, calidad 0.8) y se guarda en el
-   `localStorage` del navegador, así que solo existe en ese equipo. El botón
-   **✖ Quitar** vuelve al arte por defecto.
-2. **Archivo en `assets/images/colors/`** con el nombre del color:
-   `w.jpg`, `u.jpg`, `b.jpg`, `r.jpg`, `g.jpg`, `c.jpg` (también se aceptan
-   `.jpeg`, `.png` y `.webp`). El nombre va siempre en **minúsculas**: `w.jpg`,
-   nunca `W.JPG` ni `blanco.jpg`.
-3. Si no hay ninguna de las dos, se pinta un **degradado con el símbolo de
-   maná**: la app nunca se rompe por falta de arte.
+- Nombres: `w.jpg`, `u.jpg`, `b.jpg`, `r.jpg`, `g.jpg`, `c.jpg`; también se
+  aceptan `.jpeg`, `.png` y `.webp` (el nombre va siempre en minúsculas).
+- Si falta la imagen, se pinta un **degradado con el símbolo de maná**: la app
+  nunca se rompe por falta de arte.
+- El arte se cambia editando esos archivos en la carpeta. La app **no sube ni
+  guarda imágenes** desde la interfaz: se retiró la antigua *Galería arcana*.
 
 > Los símbolos de maná oficiales están en `assets/images/symbols/` (`w.svg`,
 > `u.svg`, `b.svg`, `r.svg`, `g.svg`, `c.svg`).
@@ -246,8 +247,8 @@ ilustraciones, a modo de portada:
 **Nota sobre `file://`:** al abrir `index.html` con doble clic, los carteles PNG
 no dibujan las imágenes de la carpeta (`assets/images/colors/`) porque el canvas
 quedaría "manchado" y la descarga fallaría. En ese modo se usan el degradado y
-los acentos; las imágenes **subidas** desde la galería sí se dibujan siempre.
-Sirviendo la app por HTTP (GitHub Pages o `python -m http.server`) se usan ambos.
+los acentos. Sirviendo la app por HTTP (GitHub Pages o `python -m http.server`)
+se usa también el arte por defecto de cada color.
 
 ### Aviso legal
 
@@ -261,18 +262,24 @@ Contenido no oficial, gratuito y sin ánimo de lucro.
 ## 🎴 Contador de mesa (partidas)
 
 La pestaña **🎴 Mesa** convierte la app en un contador para jugar partidas
-presenciales, sin torneos de por medio:
+presenciales, sin torneos de por medio. Ocupa toda la pantalla y oculta la
+cabecera, las pestañas y el pie mientras está activa:
 
 - **2, 3 o 4 jugadores**: los asientos de la parte superior se giran 180° para que
   su jugador los lea derecho (se puede desactivar con *Girar asientos de enfrente*).
+  En el centro de la rejilla, entre los jugadores, está el botón **🏆 Torneos**
+  para volver a la pantalla principal.
 - **Vidas** de **20** por defecto (o **40** para Commander) con botones grandes
-  **− / +**, atajos **−5 / −1 / +1 / +5** y reinicio por jugador (**⟳**).
+  **− / +** y reinicio por jugador (**⟳**). No hay atajos ±5: solo los dos
+  símbolos de vida.
 - **Veneno** ☠️ por jugador con aviso verde al llegar a **10**.
-- **Maná flotante**: una tarjeta por jugador con los seis símbolos oficiales
-  (blanco, azul, negro, rojo, verde y artefacto) y botones de sumar/restar;
+- **Maná flotante integrado**: cada asiento lleva sus seis símbolos oficiales
+  (blanco, azul, negro, rojo, verde y artefacto) con botones de sumar/restar;
   **🧹 Vaciar maná** deja todos los contadores a cero.
-- **Nombre y color por jugador**: el color pinta el acento del asiento y usa su
-  arte (Galería arcana) igual que los torneos.
+- **Nombre y color por jugador**: al elegir Blanco, Azul, Negro, Rojo, Verde o
+  Artefacto en el desplegable, la ilustración de `assets/images/colors/` se pinta
+  como fondo de toda su región de juego y vidas; el color también tiñe el acento
+  del asiento.
 - **Reiniciar mesa** pide confirmación (dos toques) y devuelve vidas, veneno y
   maná a su estado inicial sin borrar nombres ni colores.
 
@@ -423,7 +430,7 @@ tira de los cinco colores de maná y la misma tipografía que la app. Se puede
   con desplazamiento interno y botones que se reordenan en móvil.
 - **Accesibilidad**: foco visible, `aria-live` en los avisos y respeto a
   `prefers-reduced-motion`.
-- **Caché controlada**: CSS y JS se cargan con `?v=2.1.0`, así una versión nueva se
+- **Caché controlada**: CSS y JS se cargan con `?v=2.3.2`, así una versión nueva se
   ve al instante sin tener que borrar la caché del navegador.
 
 
@@ -465,6 +472,53 @@ muestra en la cabecera, en el pie de la página y en el título de la pestaña.
 Al publicar cambios, sube el número (recomendado *vMAYOR.MENOR.PARCHE*), actualiza
 los `?v=` de `index.html` y añade una línea nueva al histórico con su **fecha**.
 
+### v2.4.0 · 21 de noviembre de 2026
+- **Mesa a pantalla completa**: al abrir **🎴 Mesa** se ocultan cabecera,
+  navegación y pie, y los asientos ocupan todo el viewport (móvil, tablet y
+  escritorio). La rejilla reserva una fila central para el botón **🏆 Torneos**.
+- **Maná integrado en cada asiento**: se elimina el panel aparte de maná flotante;
+  cada jugador tiene sus seis símbolos W/U/B/R/G/C con sus botones de sumar y
+  restar, y **🧹 Vaciar maná** sigue disponible en la barra superior.
+- **Vidas más limpias**: se retiran los atajos ±1/±5 y quedan solo los botones
+  **− / +** para las vidas, con el contador y el veneno en el mismo asiento.
+- **Fondo de galería por jugador**: el desplegable Blanco/Azul/Negro/Rojo/Verde/
+  Artefacto pinta la ilustración de `assets/images/colors/` como fondo de toda la
+  región de juego y vidas, con el acento del color en el borde.
+- **Pruebas**: `e2e.js` comprueba la pantalla completa, el botón central, el maná
+  dentro de los asientos, los botones − / + y que el arte de color se pinta.
+- **Caché** controlada con `?v=2.4.0` en CSS y JS.
+
+### v2.3.3 · 21 de noviembre de 2026
+- **Logo oficial**: se integra `assets/images/logo.jpg` como imagen de marca de la
+  app en la cabecera y en el diálogo de instalación.
+- **Instalador web**: los iconos 192, 512, maskable y Apple Touch se regeneran con
+  el logo oficial; se añaden `favicon.png` y `favicon.ico` para la pestaña.
+- **PWA**: el manifest usa el nombre **Gestor de Torneos MTG** y el nombre corto
+  **Torneos MTG**, coherentes con el logo.
+- **Mantenimiento**: `tools/make-icons.py` toma `logo.jpg` como fuente y genera
+  todos los tamaños; el service worker cachea el logo y los favicons.
+- **Pruebas**: `pwa.js` verifica que los iconos existen, pesan como imágenes
+  reales y que `index.html` ya no usa los iconos provisionales; `e2e.js` comprueba
+  el logo de la cabecera y los favicons.
+- **Caché** controlada con `?v=2.3.3` en CSS y JS.
+
+### v2.3.2 · 21 de noviembre de 2026
+- **HUB más limpio**: se retira la **Galería arcana** de la pantalla principal
+  (panel, selector de archivo y botones de subida). El arte ya no se edita desde
+  la app; las imágenes subidas antes en `dci.art` dejan de aplicarse (no se borran
+  del navegador, simplemente se ignoran).
+- **Arte por defecto garantizado**: cada identidad de color usa su ilustración de
+  `assets/images/colors/` (`w`, `u`, `b`, `r`, `g`, `c` en `.jpg`, `.jpeg`,
+  `.png` o `.webp`); si falta, se mantiene el degradado con el símbolo de maná.
+- **Corregida la miniatura de Torneos guardados**: la cadena de respaldo saltaba
+  `.jpeg` al fallar `.jpg`, así que las imágenes por defecto (guardadas como
+  `.jpeg`) no llegaban a mostrarse ni en la lista ni en la cabecera. Ahora la
+  miniatura y el banner cargan el arte del color elegido.
+- **Pruebas**: `smoke.js` comprueba el arte por defecto en disco y la ausencia de
+  la galería; `e2e.js` verifica que la miniatura y el banner cargan el `.jpeg`
+  real del color.
+- **Caché** controlada con `?v=2.3.2` en CSS y JS.
+
 ### v2.3.1 · 21 de noviembre de 2026
 - **PWA instalable**: nuevo `manifest.json`, iconos 192/512/maskable y Apple Touch
   Icon; botón flotante **Instalar app** para Android/Chrome, iPhone/iPad y escritorio.
@@ -496,8 +550,9 @@ los `?v=` de `index.html` y añade una línea nueva al histórico con su **fecha
   archivo se llama como su color (`w`, `u`, `b`, `r`, `g`, `c`), por ejemplo
   `assets/images/colors/w.jpg` para el blanco. Se aceptan `.jpg`, `.jpeg`, `.png`
   y `.webp` (**nuevo soporte para `.jpeg`**), en minúsculas y sin espacios.
-- La **Galería arcana** muestra la ruta y los formatos válidos, y el
-  `assets/images/colors/LEEME.txt` recuerda nombres, proporción 2:3 y tamaño.
+- La interfaz de arte por color (retirada en v2.3.2) mostraba la ruta y los
+  formatos válidos, y el `assets/images/colors/LEEME.txt` recuerda nombres,
+  proporción 2:3 y tamaño.
 - Si falta la imagen de un color, la app pinta el degradado con el símbolo de
   maná: nunca se rompe por falta de arte.
 - `?v=2.2.2` en CSS y JS para refrescar la caché de `js/art.js`.
@@ -528,15 +583,14 @@ los `?v=` de `index.html` y añade una línea nueva al histórico con su **fecha
   torneo y modificable desde la cabecera del detalle.
 - **Símbolos de maná oficiales** en `assets/images/symbols/`: tira bajo el
   subtítulo de la cabecera, botones de color, etiqueta del torneo y carteles.
-- **Galería arcana**: arte propio por color con subida desde la app (JPEG
-  comprimido en `localStorage`, clave `dci.art`) y respaldo a
-  `assets/images/colors/<color>.jpg|png|webp`; sin arte se pinta un degradado
-  con el símbolo de maná.
+- **Arte por color** (la antigua *Galería arcana*, retirada en v2.3.2): cada
+  color usa su imagen de `assets/images/colors/<color>.jpg|png|webp`; sin arte
+  se pinta un degradado con el símbolo de maná.
 - **Lista y detalle**: miniatura de arte y acento de color en cada torneo,
   banner de arte en la cabecera y etiqueta de identidad.
 - **Carteles PNG**: fondo con el arte del torneo, barra de acento y símbolo de
   maná (ronda, clasificación, bracket y campeón), con guardas para `file://`.
-- **Aviso legal** de Fan Content Policy en el pie y en la galería.
+- **Aviso legal** de Fan Content Policy en el pie.
 - **Caché** controlada con `?v=2.1.0` en CSS y JS (incluye el nuevo `js/art.js`).
 - **Pruebas** sin dependencias en `tests/`: `verify.js` (integración estática),
   `smoke.js` (color/arte y persistencia) y `e2e.js` (Edge headless vía CDP).

@@ -7,16 +7,18 @@
     <meta name="description" content="Gestor de torneos de Magic: The Gathering: inscripción, rondas suizas, Top y clasificación con desempates DCI.">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="DCI Reporter">
+    <meta name="apple-mobile-web-app-title" content="Torneos MTG">
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="assets/images/icons/apple-touch-icon.png">
+    <link rel="icon" href="assets/images/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="64x64" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/images/icons/apple-touch-icon.png">
+    <meta name="msapplication-TileColor" content="#08070d">
+    <meta name="msapplication-TileImage" content="assets/images/icons/icon-192.png">
     <title>Gestión de Torneos de Magic</title>
-    <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
-    <link rel="alternate icon" href="assets/images/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=2.3.1">
+    <link rel="stylesheet" href="css/styles.css?v=2.4.0">
 </head>
 <body>
     <!-- Fondo opcional (assets/images/background.jpg) y halos de maná -->
@@ -32,7 +34,8 @@
             <span class="pip pip-g"></span>
         </div>
         <div class="header-bar">
-            <img class="brand-logo" src="assets/images/logo.svg" alt="Magic: The Gathering"
+            <img class="brand-logo" src="assets/images/logo.jpg" alt="Gestor de Torneos MTG"
+                 width="86" height="86" decoding="async"
                  onerror="this.style.display='none'">
             <div class="header-center">
                 <p class="eyebrow">DCI Reporter · Competición</p>
@@ -48,7 +51,7 @@
                 </div>
             </div>
             <div class="header-side">
-                <span class="version-chip" id="appVersionChip">v2.3.1</span>
+                <span class="version-chip" id="appVersionChip">v2.4.0</span>
                 <span class="format-chip">Suizo · Top</span>
             </div>
         </div>
@@ -102,8 +105,8 @@
                              aria-label="Identidad de color del torneo"></div>
                         <p class="color-help">
                             El color decora la lista, la cabecera del torneo y los carteles
-                            que compartes. El arte de cada color se cambia en la
-                            <strong>Galería arcana</strong>.
+                            que compartes. Cada identidad usa su <strong>ilustración por
+                            defecto</strong> de <code>assets/images/colors/</code>.
                         </p>
                     </fieldset>
                     <p class="form-help">
@@ -134,31 +137,6 @@
                 <p id="emptyTournaments" class="empty">No hay torneos todavía. Crea el primero arriba.</p>
             </div>
 
-            <div class="panel art-panel" id="artPanel">
-                <div class="panel-head">
-                    <h2>Galería arcana</h2>
-                    <span class="chip chip-muted">Arte por color</span>
-                </div>
-                <p class="form-help">
-                    Cada identidad de color tiene su ilustración. Copia tus archivos en
-                    <code>assets/images/colors/</code> con el nombre del color
-                    (<code>w</code>, <code>u</code>, <code>b</code>, <code>r</code>,
-                    <code>g</code>, <code>c</code>) y formato <code>.jpg</code>,
-                    <code>.jpeg</code>, <code>.png</code> o <code>.webp</code>: por ejemplo
-                    <code>assets/images/colors/w.jpg</code>. También puedes subirlos aquí: la
-                    imagen se guarda en tu navegador y tiene prioridad sobre la carpeta. Si falta
-                    una imagen se muestra el símbolo de maná.
-                </p>
-                <div class="art-gallery" id="artGallery"></div>
-                <input type="file" id="artFileInput" accept="image/*" hidden>
-                <p class="art-legal">
-                    Los símbolos de maná, los nombres y el universo de Magic: The Gathering son
-                    propiedad de Wizards of the Coast y se usan aquí bajo su
-                    <a href="https://company.wizards.com/es/legal/fancontentpolicy"
-                       target="_blank" rel="noopener">Fan Content Policy</a>.
-                    Contenido no oficial, gratuito y sin ánimo de lucro.
-                </p>
-            </div>
         </section>
         <!-- VISTA: DETALLE DE TORNEO -->
         <section id="view-detail" hidden>
@@ -353,61 +331,49 @@
             </div>
         </section>
 
-        <!-- VISTA: CONTADOR DE MESA (vidas, veneno y maná flotante) -->
+        <!-- VISTA: MESA A PANTALLA COMPLETA (vidas, veneno y maná por jugador) -->
         <section id="view-table" hidden>
-            <div class="panel table-panel">
-                <div class="panel-head">
-                    <h2>Contador de mesa</h2>
-                    <span class="chip" id="tableStatus">4 jugadores · 20 vidas</span>
-                </div>
-                <div class="table-toolbar">
-                    <div class="seg-group">
-                        <span class="seg-label">Jugadores</span>
-                        <div class="seg" id="tableCount" role="group"
-                             aria-label="Número de jugadores">
-                            <button class="seg-btn" type="button" data-count="2">2</button>
-                            <button class="seg-btn" type="button" data-count="3">3</button>
-                            <button class="seg-btn is-active" type="button" data-count="4"
-                                    aria-pressed="true">4</button>
-                        </div>
+            <div class="table-screen">
+                <div class="table-topbar">
+                    <div class="table-topbar-head">
+                        <h2 class="table-title">🎴 Mesa</h2>
+                        <span class="chip" id="tableStatus">4 jugadores · 20 vidas</span>
                     </div>
-                    <label class="table-field">
-                        Vidas iniciales
-                        <select id="tableStartLife">
-                            <option value="20">20 · estándar</option>
-                            <option value="40">40 · Commander</option>
-                        </select>
-                    </label>
-                    <label class="table-check">
-                        <input type="checkbox" id="tableRotate" checked>
-                        Girar asientos de enfrente
-                    </label>
-                    <button id="tableReset" class="btn ghost small" type="button">
-                        🔄 Reiniciar mesa
-                    </button>
+                    <div class="table-toolbar" role="group" aria-label="Ajustes de la mesa">
+                        <div class="seg-group">
+                            <span class="seg-label">Jugadores</span>
+                            <div class="seg" id="tableCount" role="group"
+                                 aria-label="Número de jugadores">
+                                <button class="seg-btn" type="button" data-count="2">2</button>
+                                <button class="seg-btn" type="button" data-count="3">3</button>
+                                <button class="seg-btn is-active" type="button" data-count="4"
+                                        aria-pressed="true">4</button>
+                            </div>
+                        </div>
+                        <label class="table-field">
+                            <span class="table-field-label">Vidas</span>
+                            <select id="tableStartLife" aria-label="Vidas iniciales">
+                                <option value="20">20</option>
+                                <option value="40">40</option>
+                            </select>
+                        </label>
+                        <label class="table-check" title="Girar los asientos de enfrente">
+                            <input type="checkbox" id="tableRotate" checked>
+                            <span class="table-check-label">Girar</span>
+                        </label>
+                        <button id="tableManaClear" class="table-action" type="button"
+                                aria-label="Vaciar el maná flotante" title="Vaciar maná">
+                            <span aria-hidden="true">🧹</span>
+                            <span class="table-action-label">Maná</span>
+                        </button>
+                        <button id="tableReset" class="table-action table-reset" type="button"
+                                aria-label="Reiniciar mesa" title="Reiniciar mesa">
+                            <span id="tableResetIcon" aria-hidden="true">🔄</span>
+                            <span id="tableResetLabel" class="table-reset-text">Reiniciar mesa</span>
+                        </button>
+                    </div>
                 </div>
-                <p class="form-help">
-                    Toca <strong>−</strong> y <strong>+</strong> para mover las vidas; los botones
-                    <strong>−5 / −1 / +1 / +5</strong> van más rápido. El veneno avisa al llegar a
-                    <strong>10</strong>. Nombres, colores y contadores se guardan solos en este
-                    navegador.
-                </p>
                 <div class="table-seats" id="tableSeats" data-count="4"></div>
-            </div>
-
-            <div class="panel">
-                <div class="panel-head">
-                    <h3>Maná flotante</h3>
-                    <button id="tableManaClear" class="btn ghost small" type="button">
-                        🧹 Vaciar maná
-                    </button>
-                </div>
-                <p class="form-help">
-                    Un contador por color y jugador, con los símbolos oficiales de maná. El maná
-                    flotante se vacía entre pasos y turnos: usa <strong>🧹 Vaciar maná</strong> al
-                    terminar.
-                </p>
-                <div class="mana-board" id="tableMana"></div>
             </div>
         </section>
     </main>
@@ -415,7 +381,8 @@
     <!-- Botón flotante para instalar la web como app (PWA). Lo muestra js/install.js -->
     <button id="installAppButton" class="install-fab" type="button" data-install-app
             aria-label="Instalar la app en el móvil">
-        <span class="install-fab-icon" aria-hidden="true">📲</span>
+        <img class="install-fab-icon" src="assets/images/icons/icon-192.png" alt=""
+             width="20" height="20" decoding="async">
         <span class="install-fab-label">Instalar app</span>
     </button>
 
@@ -428,7 +395,7 @@
             <span class="pip pip-g"></span>
         </div>
         <p>Datos guardados en tu navegador (localStorage). <span id="playerCount"></span></p>
-        <p class="app-version">Versión <span id="appVersion">v2.3.1</span></p>
+        <p class="app-version">Versión <span id="appVersion">v2.4.0</span></p>
         <p class="legal">
             Proyecto no oficial y sin ánimo de lucro. Magic: The Gathering y sus símbolos son
             propiedad de Wizards of the Coast y se usan bajo su
@@ -444,15 +411,15 @@
         <p class="noscript">Esta aplicación necesita JavaScript activado para funcionar.</p>
     </noscript>
 
-    <script src="js/storage.js?v=2.3.1"></script>
-    <script src="js/swiss.js?v=2.3.1"></script>
-    <script src="js/art.js?v=2.3.1"></script>
-    <script src="js/share.js?v=2.3.1"></script>
-    <script src="js/timer.js?v=2.3.1"></script>
-    <script src="js/table.js?v=2.3.1"></script>
-    <script src="js/app.js?v=2.3.1"></script>
-    <script src="js/install.js?v=2.3.1"></script>
-    <script src="js/pwa-update.js?v=2.3.1"></script>
+    <script src="js/storage.js?v=2.4.0"></script>
+    <script src="js/swiss.js?v=2.4.0"></script>
+    <script src="js/art.js?v=2.4.0"></script>
+    <script src="js/share.js?v=2.4.0"></script>
+    <script src="js/timer.js?v=2.4.0"></script>
+    <script src="js/table.js?v=2.4.0"></script>
+    <script src="js/app.js?v=2.4.0"></script>
+    <script src="js/install.js?v=2.4.0"></script>
+    <script src="js/pwa-update.js?v=2.4.0"></script>
 </body>
 </html>
 

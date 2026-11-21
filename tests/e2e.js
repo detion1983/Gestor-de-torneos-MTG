@@ -4,8 +4,8 @@
  * 1) Sirve la app por HTTP con python -m http.server.
  * 2) Abre Edge headless con --remote-debugging-port.
  * 3) Crea un torneo por la interfaz, comprueba lista/detalle, cambia el color,
- *    sube arte con la galería arcana, genera los carteles PNG y verifica que el
- *    canvas no queda "manchado" (toDataURL funciona).
+ *    verifica que la miniatura carga el arte por defecto, genera los carteles
+ *    PNG y comprueba que el canvas no queda "manchado" (toDataURL funciona).
  *
  * Uso: node tests/e2e.js   (requiere python y Edge instalados)
  */
@@ -167,6 +167,29 @@ function connect(wsUrl) {
             hero.width + 'x' + hero.height);
         check('la tira se funde al cargar', hero.loaded === true);
 
+        // 0b) El logo oficial se usa en la cabecera y en los iconos del navegador.
+        const brand = await evaluate(`
+            const img = document.querySelector('.brand-logo');
+            for (let i = 0; i < 40 && img && !img.complete; i += 1) {
+                await new Promise((r) => setTimeout(r, 50));
+            }
+            const icons = [...document.querySelectorAll('link[rel="icon"]')]
+                .map((link) => link.getAttribute('href'));
+            return {
+                src: img ? (img.currentSrc || img.src || '') : '',
+                width: img ? img.naturalWidth : 0,
+                visible: Boolean(img) && getComputedStyle(img).display !== 'none',
+                icons,
+            };
+        `);
+        check('la cabecera muestra el logo oficial',
+            brand.visible && brand.width > 0 && /assets\/images\/logo\.jpg$/.test(brand.src),
+            brand.src + ' · ' + brand.width);
+        check('el favicon usa los iconos oficiales',
+            brand.icons.some((href) => /favicon\.ico$/.test(href)) &&
+            brand.icons.some((href) => /favicon\.png$/.test(href)),
+            brand.icons.join(', '));
+
         // 1) Crear torneo con identidad de color por la interfaz.
         const created = await evaluate(`
             document.getElementById('name').value = 'Liga Arcana Test';
@@ -201,7 +224,7 @@ function connect(wsUrl) {
         check('la lista muestra 1 torneo con miniatura', created.items === 1 && created.thumbs === 1);
         check('la lista muestra la etiqueta Rojo', /Rojo/.test(created.label), created.label);
 
-        // 2) Abrir el detalle y comprobar cabecera, banner y galería.
+        // 2) Abrir el detalle y comprobar cabecera, banner y selector.
         const detail = await evaluate(`
             document.querySelector('#tournamentList .meta').click();
             await new Promise((r) => setTimeout(r, 150));
@@ -219,8 +242,6 @@ function connect(wsUrl) {
                 tagHidden: tag.hidden,
                 selectValue: select.value,
                 selectOptions: select.options.length,
-                gallery: document.getElementById('artGallery').children.length,
-                gallerySymbols: document.querySelectorAll('#artGallery .art-sym').length,
             };
         `);
         check('se abre la vista de detalle', detail.visible);
@@ -232,8 +253,6 @@ function connect(wsUrl) {
         check('selector con el color actual y opción sin color',
             detail.selectValue === 'r' && detail.selectOptions === 7,
             detail.selectValue + '/' + detail.selectOptions);
-        check('galería con 6 tarjetas', detail.gallery === 6, detail.gallery);
-        check('galería con 6 símbolos', detail.gallerySymbols === 6, detail.gallerySymbols);
 
         // 3) Cambiar el color desde la cabecera.
         const changed = await evaluate(`
@@ -258,78 +277,48 @@ function connect(wsUrl) {
         check('etiqueta pasa a Verde', /Verde/.test(changed.tag), changed.tag);
         check('la lista también pasa a Verde', /Verde/.test(changed.listLabel), changed.listLabel);
 
-        // 4) Subir arte desde la Galería arcana (flujo real de la interfaz).
-        const art = await evaluate(`
-            const c = document.createElement('canvas');
-            c.width = 120; c.height = 180;
-            const x = c.getContext('2d');
-            const grad = x.createLinearGradient(0, 0, 120, 180);
-            grad.addColorStop(0, '#0f3d2a'); grad.addColorStop(1, '#8ad6a1');
-            x.fillStyle = grad; x.fillRect(0, 0, 120, 180);
-            const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
-            const file = new File([blob], 'arte-verde.png', { type: 'image/png' });
-            const input = document.getElementById('artFileInput');
-            if (!input) return { error: 'no hay input de arte' };
-            const upload = document.querySelector('[data-art-upload="g"]');
-            if (!upload) return { error: 'no hay botón de subida para g' };
-            upload.click();
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            input.files = dt.files;
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-            await new Promise((r) => setTimeout(r, 600));
-            const stored = JSON.parse(localStorage.getItem('dci.art') || '{}');
-            const frames = document.querySelectorAll('#artGallery .art-card-frame');
-            const frameG = frames[4] || null;
-            return {
-                prefix: String(stored.g || '').slice(0, 23),
-                hasG: !!stored.g,
-                custom: Art.hasCustom('g'),
-                firstSource: Art.sources('g')[0].slice(0, 23),
-                frames: frames.length,
-                galleryHasArt: document.querySelectorAll('#artGallery .art-card-frame.has-art').length,
-                galleryCustom: Array.from(document.querySelectorAll('#artGallery .art-card-frame .art-img'))
-                    .filter((im) => im.src.indexOf('data:image') === 0).length,
-                cardImg: frameG ? (frameG.querySelector('.art-img') || {}).src || '' : '',
-                bannerImg: (document.querySelector('#detailBanner .art-img') || {}).src || '',
-                thumbImg: (document.querySelector('#tournamentList .tournament-art .art-img') || {}).src || '',
-                uploadLabel: (document.querySelector('[data-art-upload="g"]') || {}).textContent || '',
-                clearButton: !!document.querySelector('[data-art-clear="g"]'),
+        // 4) La lista y el detalle cargan el arte por defecto del color.
+        const defaultArt = await evaluate(`
+            const waitForImage = async (img) => {
+                for (let i = 0; i < 40; i += 1) {
+                    if (img && img.complete && img.naturalWidth) return true;
+                    await new Promise((r) => setTimeout(r, 100));
+                }
+                return false;
             };
-        `);
-        check('la galería usa el arte subido (JPEG en dci.art)', art.hasG && art.custom &&
-            art.prefix.indexOf('data:image/jpeg') === 0, art.prefix);
-        check('sources prioriza el arte subido', art.firstSource.indexOf('data:image/jpeg') === 0, art.firstSource);
-        check('la galería pinta el arte subido', art.galleryCustom === 1, art.galleryCustom);
-        check('la tarjeta del color usa el data URL', art.cardImg.indexOf('data:image/jpeg') === 0,
-            art.cardImg.slice(0, 24));
-        check('el banner usa el data URL', art.bannerImg.indexOf('data:image/jpeg') === 0,
-            art.bannerImg.slice(0, 24));
-        check('la miniatura de la lista usa el data URL', art.thumbImg.indexOf('data:image/jpeg') === 0,
-            art.thumbImg.slice(0, 24));
-        check('la galería ofrece cambiar y quitar el arte',
-            /Cambiar/.test(art.uploadLabel) && art.clearButton, art.uploadLabel);
-
-        // 5) Quitar el arte devuelve el degradado de respaldo.
-        const cleared = await evaluate(`
-            document.querySelector('[data-art-clear="g"]').click();
-            await new Promise((r) => setTimeout(r, 400));
-            const stored = JSON.parse(localStorage.getItem('dci.art') || '{}');
+            const frame = document.querySelector('#tournamentList .tournament-art');
+            const img = frame ? frame.querySelector('.art-img') : null;
             const banner = document.querySelector('#detailBanner .art-img');
+            const thumbLoaded = await waitForImage(img);
+            const bannerLoaded = await waitForImage(banner);
             return {
-                removed: !stored.g,
-                custom: Art.hasCustom('g'),
-                firstSource: Art.sources('g')[0] || '',
-                bannerImg: banner ? banner.src : '',
-                uploadLabel: (document.querySelector('[data-art-upload="g"]') || {}).textContent || '',
+                galleryRemoved: !document.getElementById('artPanel') &&
+                    !document.getElementById('artGallery') &&
+                    !document.getElementById('artFileInput'),
+                frameExists: !!frame,
+                hidden: frame ? frame.hidden : true,
+                hasArt: frame ? frame.classList.contains('has-art') : false,
+                thumbLoaded: thumbLoaded,
+                thumbSrc: img ? img.getAttribute('src') : '',
+                thumbWidth: img ? img.naturalWidth : 0,
+                bannerLoaded: bannerLoaded,
+                bannerSrc: banner ? banner.getAttribute('src') : '',
+                bannerWidth: banner ? banner.naturalWidth : 0,
             };
         `);
-        check('quitar arte limpia dci.art', cleared.removed && cleared.custom === false);
-        check('el arte vuelve al archivo de respaldo',
-            cleared.firstSource.indexOf('assets/images/colors/g.') !== -1, cleared.firstSource);
-        check('el botón vuelve a Subir arte', /Subir/.test(cleared.uploadLabel), cleared.uploadLabel);
+        check('la Galería arcana ya no está en el HUB', defaultArt.galleryRemoved);
+        check('la miniatura de la lista existe y no está oculta',
+            defaultArt.frameExists && defaultArt.hidden === false, JSON.stringify(defaultArt));
+        check('la miniatura carga la imagen por defecto del color',
+            defaultArt.thumbLoaded && defaultArt.hasArt && defaultArt.thumbWidth > 0 &&
+            /assets\/images\/colors\/g\.jpeg$/.test(defaultArt.thumbSrc),
+            defaultArt.thumbSrc + ' · ' + defaultArt.thumbWidth);
+        check('el banner del detalle carga la imagen por defecto',
+            defaultArt.bannerLoaded && defaultArt.bannerWidth > 0 &&
+            /assets\/images\/colors\/g\.jpeg$/.test(defaultArt.bannerSrc),
+            defaultArt.bannerSrc + ' · ' + defaultArt.bannerWidth);
 
-        // 5b) Anotar resultados con el desplegable central (P1 · marcador · P2).
+        // 5) Anotar resultados con el desplegable central (P1 · marcador · P2).
         const scoreUi = await evaluate(`
             const base = Storage.getTournaments()[0];
             const t = Object.assign({}, base, {
@@ -511,44 +500,50 @@ function connect(wsUrl) {
             poster.w + 'x' + poster.h);
         check('el canvas del cartel no queda manchado', poster.tainted === false, 'png=' + poster.png);
 
-        // 8) Contador de mesa: 2-4 asientos, vidas, veneno, maná y navegación.
+        // 8) Mesa a pantalla completa: 2-4 asientos, maná integrado y navegación.
         const mesa = await evaluate(`
             document.getElementById('tabTable').click();
             await new Promise((r) => setTimeout(r, 250));
             const seats = () => Array.from(document.querySelectorAll('#tableSeats .seat'));
             const seat = (i) => document.querySelector('#tableSeats .seat[data-seat="' + i + '"]');
             const lifeOf = (i) => Number(seat(i).querySelector('[data-role="life"]').textContent);
+            const view = document.getElementById('view-table');
             const info = {
-                viewVisible: !document.getElementById('view-table').hidden,
+                viewVisible: !view.hidden,
                 detailHidden: document.getElementById('view-detail').hidden,
                 tabActive: document.getElementById('tabTable').classList.contains('is-active'),
+                fullscreen: getComputedStyle(view).position === 'fixed' &&
+                    document.body.classList.contains('table-mode'),
+                headerHidden: getComputedStyle(document.querySelector('.app-header')).display === 'none',
                 seats: seats().length,
                 life: lifeOf(0),
                 rotatedTop: seat(0).getAttribute('data-facing'),
                 rotatedBottom: seat(3).getAttribute('data-facing'),
-                manaCards: document.querySelectorAll('#tableMana .mana-card').length,
-                manaCells: document.querySelectorAll('#tableMana .mana-cell').length,
+                manaBoards: document.querySelectorAll('#tableSeats .seat-mana').length,
+                manaCells: document.querySelectorAll('#tableSeats .seat-mana .mana-cell').length,
+                manaInsideSeats: seats().every((s) => !!s.querySelector('.seat-mana')),
+                lifeButtons: seat(0).querySelectorAll('.seat-life [data-action="life"]').length,
+                quickSteps: seat(0).querySelectorAll('.quick-step').length,
+                back: !!document.querySelector('#tableSeats .table-back'),
                 startLife: document.getElementById('tableStartLife').value,
             };
             seat(0).querySelector('[data-action="life"][data-delta="1"]').click();
-            seat(0).querySelector('[data-action="life"][data-delta="-5"]').click();
             info.afterLife = lifeOf(0);
+            seat(0).querySelector('[data-action="life"][data-delta="-1"]').click();
+            info.afterLifeBack = lifeOf(0);
             for (let i = 0; i < 10; i += 1) {
                 seat(1).querySelector('[data-action="poison"][data-delta="1"]').click();
             }
             info.poison = Number(seat(1).querySelector('[data-role="poison"]').textContent);
             info.lethal = seat(1).querySelector('[data-role="poison-box"]').classList.contains('is-lethal');
 
-            const manaBtn = (n, color, delta) => document.querySelector(
-                '#tableMana [data-mana-seat="' + n + '"] [data-action="mana"][data-mana="' +
-                color + '"][data-delta="' + delta + '"]');
+            const manaBtn = (n, color, delta) => seat(n).querySelector(
+                '[data-action="mana"][data-mana="' + color + '"][data-delta="' + delta + '"]');
             manaBtn(2, 'r', 1).click();
             manaBtn(2, 'r', 1).click();
             manaBtn(2, 'w', 1).click();
-            info.manaR = Number(document.querySelector(
-                '#tableMana [data-mana-seat="2"] [data-role="mana-r"]').textContent);
-            info.manaW = Number(document.querySelector(
-                '#tableMana [data-mana-seat="2"] [data-role="mana-w"]').textContent);
+            info.manaR = Number(seat(2).querySelector('[data-role="mana-r"]').textContent);
+            info.manaW = Number(seat(2).querySelector('[data-role="mana-w"]').textContent);
 
             const nameInput = seat(3).querySelector('.seat-name');
             nameInput.value = 'Marta';
@@ -559,10 +554,12 @@ function connect(wsUrl) {
             await new Promise((r) => setTimeout(r, 120));
             info.color = seat(0).getAttribute('data-color');
             info.artFrame = !!seat(0).querySelector('.seat-art.art-frame');
+            info.artImage = !!seat(0).querySelector('.seat-art .art-img');
 
             document.getElementById('tableCount').querySelector('[data-count="2"]').click();
             await new Promise((r) => setTimeout(r, 150));
             info.onlyTwo = seats().length;
+            info.onlyTwoMana = document.querySelectorAll('#tableSeats .seat-mana').length;
             document.getElementById('tableCount').querySelector('[data-count="4"]').click();
             await new Promise((r) => setTimeout(r, 150));
             info.status = document.getElementById('tableStatus').textContent;
@@ -571,23 +568,33 @@ function connect(wsUrl) {
             info.savedView = localStorage.getItem('dci.view');
             return info;
         `);
-        check('la pestaña Mesa muestra el contador', mesa.viewVisible && mesa.detailHidden && mesa.tabActive,
-            JSON.stringify([mesa.viewVisible, mesa.detailHidden, mesa.tabActive]));
+        check('la pestaña Mesa ocupa la pantalla completa',
+            mesa.viewVisible && mesa.detailHidden && mesa.tabActive && mesa.fullscreen &&
+            mesa.headerHidden, JSON.stringify([mesa.viewVisible, mesa.detailHidden,
+                mesa.tabActive, mesa.fullscreen, mesa.headerHidden]));
         check('4 asientos con 20 vidas', mesa.seats === 4 && mesa.life === 20,
             mesa.seats + ' · ' + mesa.life);
         check('vidas iniciales por defecto 20', mesa.startLife === '20', mesa.startLife);
         check('los asientos de enfrente se giran', mesa.rotatedTop === 'top' && !mesa.rotatedBottom,
             mesa.rotatedTop + '/' + mesa.rotatedBottom);
-        check('maná con tarjeta y 6 colores por jugador',
-            mesa.manaCards === 4 && mesa.manaCells === 24, mesa.manaCards + ' · ' + mesa.manaCells);
-        check('+1 y −5 dejan 16 vidas', mesa.afterLife === 16, mesa.afterLife);
+        check('maná integrado en los asientos: 6 símbolos por jugador',
+            mesa.manaBoards === 4 && mesa.manaCells === 24 && mesa.manaInsideSeats,
+            mesa.manaBoards + ' · ' + mesa.manaCells + ' · ' + mesa.manaInsideSeats);
+        check('solo hay − y + para las vidas (sin atajos ±5)',
+            mesa.lifeButtons === 2 && mesa.quickSteps === 0 &&
+            mesa.afterLife === 21 && mesa.afterLifeBack === 20,
+            [mesa.lifeButtons, mesa.quickSteps, mesa.afterLife, mesa.afterLifeBack].join('/'));
         check('10 contadores de veneno marcan aviso letal', mesa.poison === 10 && mesa.lethal === true,
             mesa.poison + ' · ' + mesa.lethal);
         check('el maná suma por color y jugador', mesa.manaR === 2 && mesa.manaW === 1,
             mesa.manaR + ' rojo · ' + mesa.manaW + ' blanco');
-        check('cambiar el color del asiento pinta su arte',
-            mesa.color === 'g' && mesa.artFrame === true, mesa.color + ' · ' + mesa.artFrame);
-        check('cambiar a 2 jugadores deja 2 asientos', mesa.onlyTwo === 2, mesa.onlyTwo);
+        check('el botón central separa los jugadores y vuelve a Torneos', mesa.back === true);
+        check('cambiar el color del asiento pinta la ilustración de fondo',
+            mesa.color === 'g' && mesa.artFrame === true && mesa.artImage === true,
+            mesa.color + ' · ' + mesa.artFrame + ' · ' + mesa.artImage);
+        check('cambiar a 2 jugadores deja 2 asientos con su maná',
+            mesa.onlyTwo === 2 && mesa.onlyTwoMana === 2,
+            mesa.onlyTwo + ' · ' + mesa.onlyTwoMana);
         check('el chip resume 4 jugadores y 20 vidas', /4 jugadores/.test(mesa.status) &&
             /20 vidas/.test(mesa.status), mesa.status);
         check('nombre y contadores se guardan en dci.table',
@@ -603,7 +610,7 @@ function connect(wsUrl) {
             await new Promise((r) => setTimeout(r, 150));
             const life = document.querySelector('#tableSeats .seat[data-seat="0"] [data-role="life"]');
             const poison = document.querySelector('#tableSeats .seat[data-seat="1"] [data-role="poison"]');
-            const mana = document.querySelector('#tableMana [data-mana-seat="2"] [data-role="mana-r"]');
+            const mana = document.querySelector('#tableSeats .seat[data-seat="2"] [data-role="mana-r"]');
             const stored = JSON.parse(localStorage.getItem('dci.table') || '{}');
             return {
                 armed: armed,
@@ -622,17 +629,20 @@ function connect(wsUrl) {
         check('el botón vuelve a su texto normal', /Reiniciar mesa/.test(mesaReset.button), mesaReset.button);
 
         const back = await evaluate(`
-            document.getElementById('tabTournaments').click();
+            document.querySelector('#tableSeats .table-back').click();
             await new Promise((r) => setTimeout(r, 150));
             return {
+                tableHidden: document.getElementById('view-table').hidden,
+                bodyTable: document.body.classList.contains('table-mode'),
                 listHidden: document.getElementById('view-tournaments').hidden,
                 detailVisible: !document.getElementById('view-detail').hidden,
                 tabActive: document.getElementById('tabTournaments').classList.contains('is-active'),
                 view: localStorage.getItem('dci.view'),
             };
         `);
-        check('volver a Torneos mantiene el torneo abierto',
-            back.listHidden && back.detailVisible && back.tabActive, JSON.stringify(back));
+        check('el botón central vuelve a Torneos y mantiene el torneo abierto',
+            back.tableHidden && !back.bodyTable && back.listHidden && back.detailVisible &&
+            back.tabActive, JSON.stringify(back));
         check('la sección activa se guarda al volver', back.view === 'tournaments', back.view);
 
         // 9) Excepciones y errores de consola durante toda la sesión.

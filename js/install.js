@@ -90,7 +90,11 @@
         return '<div class="install-help-card" role="dialog" aria-modal="true" ' +
             'aria-labelledby="installHelpTitle">' +
             '<div class="install-help-head">' +
-            '<h3 id="installHelpTitle">📲 Instalar DCI Reporter</h3>' +
+            '<div class="install-help-brand">' +
+            '<img class="install-help-logo" src="assets/images/logo.jpg" alt="" ' +
+            'width="54" height="54" decoding="async">' +
+            '<h3 id="installHelpTitle">Instalar la app</h3>' +
+            '</div>' +
             '<button type="button" class="install-help-close" data-install-close ' +
             'aria-label="Cerrar">✕</button>' +
             '</div>' +

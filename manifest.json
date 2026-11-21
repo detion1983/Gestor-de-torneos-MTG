@@ -1,7 +1,7 @@
 {
     "id": "./index.html",
-    "name": "Torneos de Magic · DCI Reporter",
-    "short_name": "DCI Reporter",
+    "name": "Gestor de Torneos MTG",
+    "short_name": "Torneos MTG",
     "description": "Gestor de torneos de Magic: The Gathering: inscripción, rondas suizas, Top y clasificación con desempates DCI.",
     "lang": "es",
     "dir": "ltr",

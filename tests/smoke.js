@@ -77,7 +77,7 @@ check('meta("z") === null', Art.meta('z') === null);
 check('shortLabel("") === "Sin color"', Art.shortLabel('') === 'Sin color');
 check('label("b") incluye arquetipo', Art.label('b') === 'Negro · Señor demonio', Art.label('b'));
 
-// --- sources: sin arte subido -> archivos de la carpeta ---
+// --- sources: arte por defecto desde la carpeta ---
 check('sources("w") usa assets/images/colors/', Art.sources('w')[0] === 'assets/images/colors/w.jpg',
     Art.sources('w').join(', '));
 check('sources("") vacío', Art.sources('').length === 0);
@@ -86,8 +86,16 @@ check('cada color acepta jpg, jpeg, png y webp', Art.list().every((color) =>
     Art.list().map((c) => c.files.join('|')).join('  '));
 check('sources("r") incluye el respaldo .jpeg',
     Art.sources('r').indexOf('assets/images/colors/r.jpeg') === 1, Art.sources('r').join(', '));
-check('la carpeta de arte por color existe',
-    fs.existsSync(path.join(root, 'assets/images/colors')));
+const colorDir = path.join(root, 'assets/images/colors');
+check('la carpeta de arte por color existe', fs.existsSync(colorDir));
+Art.list().forEach((color) => {
+    const found = color.files.filter((name) => fs.existsSync(path.join(colorDir, name)));
+    check('arte por defecto en disco: ' + color.key, found.length > 0, found.join(', ') || 'ninguno');
+});
+const homeHtml = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+check('la Galería arcana ya no está en el HUB',
+    !/id="artPanel"/.test(homeHtml) && !/id="artGallery"/.test(homeHtml) &&
+    !/id="artFileInput"/.test(homeHtml));
 
 // --- tira de arte de cabecera (assets/images/banner.*) ---
 const HERO_FILES = ['banner.jpg', 'banner.jpeg', 'banner.png', 'banner.webp'];
@@ -115,16 +123,6 @@ check('applyAccent --accent', node.style.value === '--accent=#4f9f6a', node.styl
 delete node.dataset.color;
 Art.applyAccent(node, '');
 check('applyAccent sin color -> none', node.dataset.color === 'none');
-
-// --- arte subido (dci.art) y su prioridad ---
-const ctx2 = makeContext({ 'dci.art': JSON.stringify({ u: 'data:image/jpeg;base64,AAAA' }) }).ctx;
-const Art2 = grab(ctx2, 'Art');
-check('hasCustom("u") lee localStorage', Art2.hasCustom('u'));
-check('custom("u") devuelve el data URL', Art2.custom('u').indexOf('data:image/jpeg') === 0);
-check('sources("u") prioriza lo subido', Art2.sources('u')[0].indexOf('data:image/jpeg') === 0);
-check('hasCustom("r") false', Art2.hasCustom('r') === false);
-Art2.clear('u');
-check('clear("u") borra el arte', Art2.hasCustom('u') === false);
 
 // --- swiss: el color se guarda en el torneo ---
 const t = Swiss.createTournament({ name: 'Liga de prueba', date: '2026-11-18', color: 'r' });

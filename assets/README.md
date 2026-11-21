@@ -1,8 +1,9 @@
 # 📁 Carpeta `assets` — Material del proyecto
 
-Aquí puedes poner tus propios sonidos e imágenes. La app funciona **sin nada** de
-esta carpeta (usa un pitido generado por código), pero si añades los archivos con
-**estos nombres exactos y formatos**, se usará automáticamente lo que pongas.
+Aquí puedes poner tus propios sonidos e imágenes. La app ya incluye el logo
+oficial y los iconos de instalación; los **sonidos** son opcionales (si faltan,
+usa un pitido generado por código). Si añades archivos con **estos nombres
+exactos y formatos**, se usará automáticamente lo que pongas.
 
 ## 🔊 `assets/sounds/` — Sonidos del cronómetro
 
@@ -19,33 +20,44 @@ esta carpeta (usa un pitido generado por código), pero si añades los archivos 
 - **Volumen**: que destaquen en un local ruidoso (un **gong/ding** funciona bien).
 - Si un archivo **no existe**, la app genera un pitido por código como respaldo.
 
-## 🖼️ `assets/images/` — Imágenes (opcional)
+## 🖼️ `assets/images/` — Imágenes y logo oficial
 
-### ✅ Ya incluidas (provisionales)
-Estos archivos vienen con el proyecto para que **se vea completo sin que aportes nada**.
-Sustitúyelos por los tuyos **con el mismo nombre** y la app los usará solos:
+### ✅ Logo oficial e iconos incluidos
 
-| Nombre del archivo   | Formato        | Para qué es                                  |
-| -------------------- | -------------- | -------------------------------------------- |
-| `favicon.svg`        | SVG vectorial  | Icono de la pestaña (trofeo verde).          |
-| `favicon.png`        | PNG 512×512    | Reserva del icono (navegadores sin SVG).     |
-| `logo.svg`           | SVG vectorial  | Logotipo de la cabecera "Magic TCG".        |
-| `logo.png`           | PNG (transp.)  | Versión PNG del logo (ejemplo).              |
+El logotipo oficial de la app es **`assets/images/logo.jpg`** (1024×1024). Se usa
+en la cabecera, en el diálogo de instalación y como fuente para generar los
+iconos de la PWA:
 
-### 🔁 Para poner lo tuyo
+| Nombre del archivo                     | Formato          | Para qué es                                      |
+| -------------------------------------- | ---------------- | ------------------------------------------------ |
+| `logo.jpg`                             | JPG 1024×1024    | Logo oficial de la app (cabecera e instalador).  |
+| `favicon.png`                          | PNG 64×64        | Icono de la pestaña del navegador.               |
+| `favicon.ico`                          | ICO 16/32/48/64  | Reserva para navegadores antiguos.               |
+| `icons/icon-192.png`                   | PNG 192×192      | Icono de instalación (Android/Chrome).           |
+| `icons/icon-512.png`                   | PNG 512×512      | Icono de instalación (Android/Chrome).           |
+| `icons/icon-maskable-512.png`          | PNG 512×512      | Icono adaptativo de Android (con zona segura).   |
+| `icons/apple-touch-icon.png`           | PNG 180×180      | Icono de inicio en iPhone/iPad.                  |
+
+Si sustituyes `logo.jpg` por otro logo cuadrado, regenera todos los iconos desde
+la raíz del proyecto:
+
+```bash
+python tools/make-icons.py
+```
+
+### 🔁 Otras imágenes opcionales
+
 | Nombre del archivo   | Formato recomendado | Para qué es                                  |
 | -------------------- | ------------------- | -------------------------------------------- |
-| `logo.png` / `logo.svg`     | PNG o SVG    | Logotipo de tu tienda/torneo.                |
-| `favicon.png` / `favicon.svg` | PNG 512×512 o SVG | Icono de la pestaña.                |
-| `favicon.ico`        | ICO                 | Alternativa clásica de icono.                |
 | `background.jpg`     | JPG o WebP          | Fondo opcional de toda la página (se aplica al 22 % de opacidad). |
 | `banner.jpg`         | JPG ~6:1 (2400×716) | Tira de cabecera: las seis artes en fila, entre el título y las pestañas. |
 
-> El **logo de la cabecera** se oculta solo si el archivo no existe, así que puedes
-> borrar `logo.svg` sin romper nada. El **favicon** también es opcional.
 > La **tira de maná**, los marcos dorados y los halos del tema *Arena arcana* son
 > CSS puro: no necesitan imágenes. Si añades `background.jpg`, usa una imagen oscura
 > (mazmorra, taberna, arte de carta) para que el texto siga siendo legible.
+> Los **iconos PWA** sí son necesarios para que el navegador ofrezca instalar la
+> app; no los borres. Si falta `logo.jpg`, la cabecera oculta la imagen sin romper
+> el resto de la interfaz.
 
 ### 🏳️ `banner.jpg` — Tira de cabecera (opcional)
 
@@ -65,7 +77,8 @@ La banda panorámica que se ve entre el título y las pestañas:
 
 Un archivo por color. Para cada color se prueban estos formatos en orden:
 `.jpg` → `.jpeg` → `.png` → `.webp`. Nombres **en minúsculas y sin espacios**:
-`w.jpg` sí, `W.JPG` o `blanco.jpg` no.
+`w.jpg` sí, `W.JPG` o `blanco.jpg` no. Además de decorar torneos, la ilustración
+del color elegido se usa como fondo de la región de cada jugador en la **Mesa**.
 
 | Color     | Archivo (pon uno de estos)                    | Arquetipo sugerido     |
 | --------- | --------------------------------------------- | ---------------------- |
@@ -79,16 +92,15 @@ Un archivo por color. Para cada color se prueban estos formatos en orden:
 > Ejemplo: para el color **rojo** guarda el archivo como
 > `assets/images/colors/r.jpg` (o `r.jpeg`, `r.png`, `r.webp`).
 
-- **Formato**: ilustración **vertical** (proporción 2:3). 600×900 px basta; la app
-  comprime a 820×1230 como máximo al subir arte desde la propia app.
+- **Formato**: ilustración **vertical** (proporción 2:3). 600×900 px basta.
 - **Peso**: JPEG de calidad media. Evita PNG de varios MB en GitHub Pages.
 - **Legibilidad**: encima del arte se dibujan texto claro, un velo oscuro y el
   símbolo de maná, así que conviene una imagen oscura y con lo importante centrado.
 - Si falta un color, la app pinta un degradado con el símbolo de maná: **nunca se
   rompe** por falta de arte.
-- También puedes subir el arte desde **Galería arcana** dentro de la app. Esa
-  imagen vive en el `localStorage` del navegador (`dci.art`), tiene prioridad
-  sobre esta carpeta y solo existe en ese equipo.
+- **El arte es fijo**: se cambia sustituyendo estos archivos. La app no sube ni
+  guarda imágenes desde el navegador (la antigua *Galería arcana* se retiró en
+  v2.3.2).
 - Con estos mismos seis archivos se monta la **tira de cabecera**
   (`assets/images/banner.jpg`): si cambias el arte, rehaz la tira con los seis
   nuevos (basta pegarlos en fila).
@@ -100,7 +112,8 @@ Un archivo por color. Para cada color se prueban estos formatos en orden:
 
 ## 📐 Recomendaciones generales
 
-- **Iconos**: SVG siempre que puedas (ligeros y nítidos a cualquier tamaño).
+- **Logo**: usa una imagen cuadrada (recomendado 1024×1024, como `logo.jpg`) y
+  regenera los iconos con `python tools/make-icons.py`.
 - **Tamaños**: mantén las imágenes **< 300 KB** para que la web cargue rápido.
 - **Nombres**: todo en **minúsculas**, sin espacios (usa guiones `-`).
 - **Rutas**: en el HTML/JS se referencian como `assets/sounds/round-end.mp3`,

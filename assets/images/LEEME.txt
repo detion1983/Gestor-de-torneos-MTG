@@ -1,13 +1,15 @@
-# Coloca aquí tus imágenes (opcional).
+# Coloca aqui tus imagenes (opcional).
 # Nombres y formatos recomendados (ver ../README.md):
-#   logo.png        -> logotipo de la tienda/torneo (PNG o SVG)
-#   favicon.png     -> icono de la pestaña (512x512 PNG)  o favicon.ico
+#   logo.jpg        -> LOGO OFICIAL de la app (1024x1024, cabecera e instalador)
+#   favicon.png     -> icono de la pestaña (64x64 PNG); favicon.ico es la reserva
 #   background.jpg  -> fondo de cabecera (JPG o WebP)
 #   banner.jpg      -> TIRA de cabecera: las 6 artes en fila, ~6:1 (2400x716).
 #                      Tambien valen banner.jpeg / banner.png / banner.webp;
 #                      si no existe, la banda se oculta sola y no pasa nada.
 #
-# YA INCLUIDOS (provisionales, creados por la app; sustitúyelos por los tuyos):
-#   favicon.svg / favicon.png  -> icono de la pestaña (trofeo verde)
-#   logo.svg    / logo.png     -> logotipo de cabecera "Magic TCG"
-#   (Si borras logo.svg, la cabecera sigue funcionando: la imagen se oculta sola.)
+# ICONOS DE INSTALACION (generados desde logo.jpg; no borrar):
+#   icons/icon-192.png / icons/icon-512.png / icons/icon-maskable-512.png
+#   icons/apple-touch-icon.png
+#   Regenera todos con: python tools/make-icons.py
+#
+# Si sustituyes logo.jpg por otro logo cuadrado, vuelve a ejecutar ese comando.

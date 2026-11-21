@@ -1,18 +1,19 @@
 /*
  * table.js
- * Contador de mesa para partidas presenciales: vidas, veneno y maná flotante.
+ * Contador de mesa inmersivo para partidas presenciales.
  *
- * Cada jugador (de 2 a 4) tiene su asiento con:
- *   - Nombre editable y color de identidad (reutiliza Art y sus símbolos).
- *   - Contador de vidas de 20 (o 40 para Commander) con botones grandes y
- *     atajos de ±1 y ±5.
+ * La vista de mesa ocupa toda la pantalla. Cada jugador (de 2 a 4) tiene su
+ * propia región con:
+ *   - Nombre editable y desplegable de color: al elegir Blanco, Azul, Negro,
+ *     Rojo, Verde o Artefacto se pinta la ilustración de la galería
+ *     (assets/images/colors/) como fondo de su región.
+ *   - Contador de vidas de 20 (o 40 para Commander) con solo los botones − y +.
+ *   - Maná flotante integrado en el mismo asiento: seis símbolos oficiales
+ *     (blanco, azul, negro, rojo, verde y artefacto) con sus botones de
+ *     sumar/restar.
  *   - Contador de veneno (avisa al llegar a 10) y reinicio individual.
  *
- * El maná flotante vive en un panel aparte: una tarjeta por jugador con los
- * seis símbolos oficiales (blanco, azul, negro, rojo, verde y artefacto) y sus
- * botones de sumar/restar. Así los contadores se leen bien con 2, 3 o 4
- * jugadores en pantalla.
- *
+ * En el centro de la rejilla hay un botón para volver a la pantalla TORNEOS.
  * Todo el estado se guarda en localStorage (clave "dci.table") y se recupera
  * al volver a abrir la app. Este módulo no mezcla nada con los torneos.
  */
@@ -234,10 +235,6 @@ const Table = (() => {
         if (!player) return;
         player.name = String(value == null ? '' : value).slice(0, NAME_MAX).trim();
         save();
-        const card = el.mana
-            ? el.mana.querySelector('[data-mana-seat="' + seat + '"] .mana-card-name')
-            : null;
-        if (card) card.textContent = player.name.trim() || ('Jugador ' + (Number(seat) + 1));
     }
 
     function setColor(seat, key) {
@@ -354,15 +351,7 @@ const Table = (() => {
         life.appendChild(plus);
         seat.appendChild(life);
 
-        const quick = document.createElement('div');
-        quick.className = 'seat-quick';
-        [[-5, '−5'], [-1, '−1'], [1, '+1'], [5, '+5']].forEach((pair) => {
-            quick.appendChild(makeButton(pair[1], {
-                className: 'quick-step', action: 'life', delta: pair[0], seat: index,
-            }, (pair[0] > 0 ? 'Sumar ' : 'Restar ') + Math.abs(pair[0]) +
-                ' vidas al jugador ' + (index + 1)));
-        });
-        seat.appendChild(quick);
+        seat.appendChild(buildMana(player, index));
 
         const counters = document.createElement('div');
         counters.className = 'seat-counters';
@@ -408,23 +397,16 @@ const Table = (() => {
         return img;
     }
 
-    function buildManaCard(player, index) {
-        const card = document.createElement('div');
-        card.className = 'mana-card';
-        card.dataset.manaSeat = String(index);
-        Art.applyAccent(card, player.color);
+    // Maná flotante integrado en el propio asiento del jugador.
+    function buildMana(player, index) {
+        const board = document.createElement('div');
+        board.className = 'seat-mana';
+        board.dataset.manaSeat = String(index);
 
-        const head = document.createElement('div');
-        head.className = 'mana-card-head';
-        const tag = document.createElement('span');
-        tag.className = 'mana-card-tag';
-        tag.textContent = 'J' + (index + 1);
-        const name = document.createElement('span');
-        name.className = 'mana-card-name';
-        name.textContent = player.name.trim() || ('Jugador ' + (index + 1));
-        head.appendChild(tag);
-        head.appendChild(name);
-        card.appendChild(head);
+        const label = document.createElement('span');
+        label.className = 'seat-mana-label';
+        label.textContent = 'Maná flotante';
+        board.appendChild(label);
 
         const cells = document.createElement('div');
         cells.className = 'mana-cells';
@@ -456,9 +438,22 @@ const Table = (() => {
 
             cells.appendChild(cell);
         });
-        card.appendChild(cells);
+        board.appendChild(cells);
 
-        return card;
+        return board;
+    }
+
+    // Botón central que separa los asientos y devuelve a la pantalla TORNEOS.
+    function buildCenterButton() {
+        const btn = makeButton('🏆', {
+            className: 'table-back', action: 'back',
+        }, 'Volver a la pantalla de Torneos');
+        const label = document.createElement('span');
+        label.className = 'table-back-label';
+        label.textContent = 'Torneos';
+        btn.appendChild(label);
+        btn.title = 'Volver a Torneos';
+        return btn;
     }
 
     function syncToolbar() {
@@ -497,29 +492,16 @@ const Table = (() => {
             if (poison) poison.textContent = String(player.poison);
             const poisonBox = seat.querySelector('[data-role="poison-box"]');
             if (poisonBox) poisonBox.classList.toggle('is-lethal', player.poison >= POISON_MAX);
-        });
 
-        if (el.mana) {
-            state.players.slice(0, state.count).forEach((player, index) => {
-                MANA.forEach((key) => {
-                    const out = el.mana.querySelector(
-                        '[data-mana-seat="' + index + '"] [data-role="mana-' + key + '"]');
-                    if (!out) return;
-                    out.textContent = String(player.mana[key] || 0);
-                    const cell = out.closest ? out.closest('.mana-cell') : null;
-                    if (cell) cell.classList.toggle('is-empty', !player.mana[key]);
-                });
+            MANA.forEach((key) => {
+                const out = seat.querySelector('[data-role="mana-' + key + '"]');
+                if (!out) return;
+                out.textContent = String(player.mana[key] || 0);
+                const cell = out.closest ? out.closest('.mana-cell') : null;
+                if (cell) cell.classList.toggle('is-empty', !player.mana[key]);
             });
-        }
-        syncToolbar();
-    }
-
-    function renderMana() {
-        if (!el.mana) return;
-        el.mana.innerHTML = '';
-        state.players.slice(0, state.count).forEach((player, index) => {
-            el.mana.appendChild(buildManaCard(player, index));
         });
+        syncToolbar();
     }
 
     function render() {
@@ -530,7 +512,8 @@ const Table = (() => {
         for (let index = 0; index < state.count; index += 1) {
             el.seats.appendChild(buildSeat(state.players[index], index));
         }
-        renderMana();
+        // El botón central forma parte de la rejilla y separa los asientos.
+        el.seats.appendChild(buildCenterButton());
         syncValues();
     }
 
@@ -550,23 +533,31 @@ const Table = (() => {
         if (!btn) return;
         const index = Number(btn.dataset.seat);
         const delta = Number(btn.dataset.delta) || 0;
-        if (btn.dataset.action === 'life') adjust(index, delta);
-        else if (btn.dataset.action === 'poison') adjustPoison(index, delta);
-        else if (btn.dataset.action === 'reset-seat') resetSeat(index);
-    }
-
-    function onManaClick(event) {
-        const btn = event.target.closest
-            ? event.target.closest('button[data-action="mana"]')
-            : null;
-        if (!btn) return;
-        adjustMana(Number(btn.dataset.seat), btn.dataset.mana, Number(btn.dataset.delta) || 0);
+        const action = btn.dataset.action;
+        if (action === 'life') adjust(index, delta);
+        else if (action === 'poison') adjustPoison(index, delta);
+        else if (action === 'mana') adjustMana(index, btn.dataset.mana, delta);
+        else if (action === 'reset-seat') resetSeat(index);
+        else if (action === 'back') {
+            const tab = document.getElementById('tabTournaments');
+            if (tab) tab.click();
+        }
     }
 
     function onCountClick(event) {
         const btn = event.target.closest ? event.target.closest('button[data-count]') : null;
         if (!btn) return;
         setCount(btn.dataset.count);
+    }
+
+    function setResetVisual(icon, label) {
+        if (el.resetIcon) el.resetIcon.textContent = icon;
+        if (el.resetLabel) {
+            el.resetLabel.textContent = label;
+        } else if (el.reset) {
+            el.reset.textContent = icon + ' ' + label;
+        }
+        if (el.reset) el.reset.setAttribute('aria-label', label);
     }
 
     // El reinicio de toda la mesa se pide dos veces (evita borrar por error).
@@ -577,19 +568,19 @@ const Table = (() => {
             if (resetTimer) clearTimeout(resetTimer);
             resetTimer = null;
             el.reset.classList.remove('is-armed');
-            el.reset.textContent = '🔄 Reiniciar mesa';
+            setResetVisual('🔄', 'Reiniciar mesa');
             resetAll();
             notify('Mesa reiniciada a ' + load().startLife + ' vidas', 'success');
             return;
         }
         resetArmed = true;
         el.reset.classList.add('is-armed');
-        el.reset.textContent = '⚠️ ¿Reiniciar todo?';
+        setResetVisual('⚠️', '¿Reiniciar todo?');
         resetTimer = setTimeout(() => {
             resetArmed = false;
             resetTimer = null;
             el.reset.classList.remove('is-armed');
-            el.reset.textContent = '🔄 Reiniciar mesa';
+            setResetVisual('🔄', 'Reiniciar mesa');
         }, 3200);
     }
 
@@ -603,12 +594,13 @@ const Table = (() => {
     // ------------------------------------------------------------------
     function init() {
         el.seats = document.getElementById('tableSeats');
-        el.mana = document.getElementById('tableMana');
         el.status = document.getElementById('tableStatus');
         el.count = document.getElementById('tableCount');
         el.startLife = document.getElementById('tableStartLife');
         el.rotate = document.getElementById('tableRotate');
         el.reset = document.getElementById('tableReset');
+        el.resetIcon = document.getElementById('tableResetIcon');
+        el.resetLabel = document.getElementById('tableResetLabel');
         el.clearMana = document.getElementById('tableManaClear');
         if (!el.seats) return;
 
@@ -622,7 +614,6 @@ const Table = (() => {
         if (el.reset) el.reset.addEventListener('click', onResetClick);
         if (el.clearMana) el.clearMana.addEventListener('click', onClearMana);
         el.seats.addEventListener('click', onSeatClick);
-        if (el.mana) el.mana.addEventListener('click', onManaClick);
 
         render();
     }

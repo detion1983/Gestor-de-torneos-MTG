@@ -10,7 +10,7 @@ const App = (() => {
     // Cambia SOLO esta linea al publicar una version nueva.
     // Formato recomendado: vMAYOR.MENOR.PARCHE  (p. ej. v1.1.0)
     // ------------------------------------------------------------------
-    const APP_VERSION = 'v2.3.1';
+    const APP_VERSION = 'v2.4.0';
 
     // Clave donde se recuerda la ultima seccion abierta (torneos o mesa).
     const VIEW_KEY = 'dci.view';
@@ -24,8 +24,6 @@ const App = (() => {
     let currentTournamentId = null;
     // Identidad de color elegida en el formulario de creacion ('' = sin color).
     let selectedColor = '';
-    // Color pendiente de subida en la Galeria arcana.
-    let pendingArtColor = '';
     // Token para descartar carteles que terminan de pintarse fuera de tiempo.
     let awardsToken = 0;
 
@@ -117,11 +115,8 @@ const App = (() => {
         el.awardsDownload = document.getElementById('awardsDownload');
         el.awardsNative = document.getElementById('awardsNative');
 
-        // Identidad de color y galeria de arte
+        // Identidad de color
         el.colorOptions = document.getElementById('colorOptions');
-        el.artPanel = document.getElementById('artPanel');
-        el.artGallery = document.getElementById('artGallery');
-        el.artFileInput = document.getElementById('artFileInput');
         el.detailHead = document.getElementById('detailHead');
         el.detailBanner = document.getElementById('detailBanner');
         el.detailColorTag = document.getElementById('detailColorTag');
@@ -162,7 +157,6 @@ const App = (() => {
         initTimer();
         renderColorOptions();
         renderDetailColorOptions();
-        renderArtGallery();
         renderTournaments();
         refreshKnownPlayers();
         updatePlayerCount();
@@ -411,11 +405,9 @@ const App = (() => {
         if (el.awardsDownload) el.awardsDownload.addEventListener('click', downloadAwardsCanvas);
         if (el.awardsNative) el.awardsNative.addEventListener('click', nativeAwardsCanvas);
 
-        // Identidad de color y galeria de arte.
+        // Identidad de color.
         if (el.colorOptions) el.colorOptions.addEventListener('click', onPickColor);
         if (el.detailColorSelect) el.detailColorSelect.addEventListener('change', onDetailColorChange);
-        if (el.artGallery) el.artGallery.addEventListener('click', onArtGalleryClick);
-        if (el.artFileInput) el.artFileInput.addEventListener('change', onArtFileChosen);
     }
 
     function onCreateTournament(event) {
@@ -436,7 +428,7 @@ const App = (() => {
     }
 
     // ----------------------------------------------------------------
-    // IDENTIDAD DE COLOR Y GALERIA DE ARTE
+    // IDENTIDAD DE COLOR
     // ----------------------------------------------------------------
     // Botones de color del formulario de creacion.
     function renderColorOptions() {
@@ -513,97 +505,6 @@ const App = (() => {
         toast(tournament.color
             ? 'Color del torneo: ' + Art.label(tournament.color)
             : 'Torneo sin identidad de color', 'success');
-    }
-
-    // Tarjetas de la Galeria arcana (una por identidad de color).
-    function renderArtGallery() {
-        if (!el.artGallery) return;
-        el.artGallery.innerHTML = '';
-        Art.list().forEach((color) => {
-            const card = document.createElement('article');
-            card.className = 'art-card';
-            card.style.setProperty('--accent', color.accent);
-
-            const frame = document.createElement('div');
-            frame.className = 'art-card-frame';
-            Art.paint(frame, color.key, { alt: color.name + ' · ' + color.arch });
-            card.appendChild(frame);
-
-            const body = document.createElement('div');
-            body.className = 'art-card-body';
-
-            const title = document.createElement('strong');
-            title.textContent = color.name;
-            const arch = document.createElement('small');
-            arch.textContent = color.arch;
-            body.appendChild(title);
-            body.appendChild(arch);
-
-            const actions = document.createElement('div');
-            actions.className = 'art-card-actions';
-            const upload = document.createElement('button');
-            upload.type = 'button';
-            upload.className = 'btn ghost small';
-            upload.dataset.artUpload = color.key;
-            upload.textContent = Art.hasCustom(color.key) ? '📷 Cambiar' : '📷 Subir arte';
-            actions.appendChild(upload);
-            if (Art.hasCustom(color.key)) {
-                const remove = document.createElement('button');
-                remove.type = 'button';
-                remove.className = 'btn ghost small';
-                remove.dataset.artClear = color.key;
-                remove.textContent = '✖ Quitar';
-                actions.appendChild(remove);
-            }
-            body.appendChild(actions);
-            card.appendChild(body);
-            el.artGallery.appendChild(card);
-        });
-    }
-
-    // Repinta todo lo que muestra arte: galeria, lista y detalle abierto.
-    function refreshArtViews() {
-        renderArtGallery();
-        renderTournaments();
-        if (currentTournamentId) renderDetail();
-    }
-
-    function onArtGalleryClick(event) {
-        const upload = event.target.closest('[data-art-upload]');
-        if (upload) {
-            pendingArtColor = upload.dataset.artUpload;
-            if (!el.artFileInput) return;
-            el.artFileInput.value = '';
-            el.artFileInput.click();
-            return;
-        }
-        const remove = event.target.closest('[data-art-clear]');
-        if (!remove) return;
-        const key = remove.dataset.artClear;
-        try {
-            Art.clear(key);
-        } catch (err) {
-            toast((err && err.message) || 'No se pudo quitar la imagen', 'error');
-            return;
-        }
-        refreshArtViews();
-        toast('Arte de ' + Art.shortLabel(key) + ' restaurado', 'success');
-    }
-
-    function onArtFileChosen() {
-        const file = (el.artFileInput && el.artFileInput.files)
-            ? el.artFileInput.files[0] : null;
-        const key = pendingArtColor;
-        pendingArtColor = '';
-        if (!file || !key) return;
-        Art.setFromFile(key, file)
-            .then(() => {
-                refreshArtViews();
-                toast('Arte de ' + Art.shortLabel(key) + ' actualizado', 'success');
-            })
-            .catch((err) => {
-                toast((err && err.message) || 'No se pudo cargar la imagen', 'error');
-            });
     }
 
     // Pinta el arte del torneo como fondo de la cabecera del detalle.
@@ -857,7 +758,7 @@ const App = (() => {
 
                 const art = document.createElement('div');
                 art.className = 'tournament-art';
-                Art.paint(art, color, { alt: '', symbol: false });
+                Art.paint(art, color, { alt: '', symbol: false, eager: true });
                 art.hidden = !color;
                 art.addEventListener('click', () => openTournament(t.id));
 
@@ -918,6 +819,8 @@ const App = (() => {
     // torneos se respeta si hay un torneo abierto (detalle) o la lista.
     function showSection(section) {
         const isTable = section === 'table';
+        // La mesa ocupa toda la pantalla y oculta cabecera, navegación y pie.
+        document.body.classList.toggle('table-mode', isTable);
         if (el.viewTable) el.viewTable.hidden = !isTable;
         if (isTable) {
             el.viewTournaments.hidden = true;
