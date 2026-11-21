@@ -989,6 +989,43 @@ tbody tr:nth-child(3) .rank { color: #c98a5b; }
 tbody tr.dropped td { color: var(--ink-soft); }
 tbody tr.dropped td:nth-child(2) { text-decoration: line-through; }
 
+td.record {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    color: var(--ink-dim);
+}
+
+.standings-help {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    background: rgba(155, 122, 232, 0.06);
+    color: var(--ink-dim);
+    font-size: 0.8rem;
+    line-height: 1.55;
+}
+
+.standings-help summary {
+    color: var(--gold);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.standings-help summary:hover { color: var(--gold-bright); }
+
+.standings-help p { margin: 6px 0 0; }
+.standings-help strong { color: var(--ink); }
+
+.standings-help code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(155, 122, 232, 0.16);
+    color: var(--gold-bright);
+    font-family: var(--font-ui);
+    font-size: 0.78rem;
+}
+
 /* ------------------------------------------------------------------ */
 /* CRONÓMETRO                                                         */
 /* ------------------------------------------------------------------ */
@@ -1991,20 +2028,29 @@ body.table-mode .install-fab {
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 6px;
-    max-width: 100%;
-    padding: 4px 8px;
+    width: max-content;
+    max-width: calc(100% - 4px);
+    padding: 4px 10px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
     border: 1px solid var(--line-soft);
     border-radius: 999px;
     background: rgba(8, 7, 13, 0.5);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(10px);
+    -webkit-overflow-scrolling: touch;
 }
 
+.table-hub::-webkit-scrollbar { display: none; }
+
 .table-hub .table-toolbar {
-    flex: 0 1 auto;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
     justify-content: center;
+    min-width: 0;
     margin: 0;
 }
 
@@ -2381,7 +2427,7 @@ body.table-mode .install-fab {
         padding: 5px 7px;
     }
     .table-topbar .chip,
-    .table-topbar .seg-label,
+    .seg-label,
     .table-field-label,
     .table-check-label,
     .table-action-label,
@@ -2418,6 +2464,19 @@ body.table-mode .install-fab {
 
 @media (max-width: 430px) {
     .table-title { font-size: 0.72rem; }
+    .table-hub {
+        gap: 3px;
+        padding: 3px 6px;
+    }
+    .table-hub .table-toolbar {
+        gap: 3px;
+    }
+    .table-back {
+        gap: 0;
+        padding: 6px 8px;
+    }
+    .table-back-label { display: none; }
+    .table-action { padding: 5px 6px; }
     .seg-btn { min-width: 26px; padding: 5px 6px; }
     .seat { padding: 5px; }
     .seat-name { padding: 4px 5px; font-size: 0.62rem; }
@@ -3057,6 +3116,22 @@ html:not(.theme-dark) tbody tr .rank { color: #8a5f12; }
 html:not(.theme-dark) tbody tr:nth-child(1) .rank { color: #6d4708; }
 html:not(.theme-dark) tbody tr:nth-child(2) .rank { color: #5f6673; }
 html:not(.theme-dark) tbody tr:nth-child(3) .rank { color: #9a5a2c; }
+html:not(.theme-dark) td.record { color: #5b4e3d; }
+
+html:not(.theme-dark) .standings-help {
+    background: rgba(217, 178, 95, 0.08);
+    border-color: rgba(123, 89, 33, 0.2);
+    color: #5b4e3d;
+}
+
+html:not(.theme-dark) .standings-help summary { color: #7b5310; }
+html:not(.theme-dark) .standings-help summary:hover { color: #4d3306; }
+html:not(.theme-dark) .standings-help strong { color: #3a3021; }
+
+html:not(.theme-dark) .standings-help code {
+    background: rgba(217, 178, 95, 0.18);
+    color: #6d4708;
+}
 
 html:not(.theme-dark) .timer-display {
     color: #6d4708;

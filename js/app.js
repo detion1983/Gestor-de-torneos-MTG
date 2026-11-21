@@ -10,7 +10,7 @@ const App = (() => {
     // Cambia SOLO esta linea al publicar una version nueva.
     // Formato recomendado: vMAYOR.MENOR.PARCHE  (p. ej. v1.1.0)
     // ------------------------------------------------------------------
-    const APP_VERSION = 'v2.4.3';
+    const APP_VERSION = 'v2.4.5';
 
     // Clave donde se recuerda la ultima seccion abierta (torneos o mesa).
     const VIEW_KEY = 'dci.view';
@@ -42,7 +42,7 @@ const App = (() => {
         el.tabTournaments = document.getElementById('tabTournaments');
         el.tabTable = document.getElementById('tabTable');
 
-        // Conmutador de tema: cabecera y barra de la mesa (pantalla completa).
+        // Conmutador de tema: cabecera y franja central de la mesa.
         el.themeToggle = document.getElementById('themeToggle');
         el.themeIcon = document.getElementById('themeIcon');
         el.themeLabel = document.getElementById('themeLabel');
@@ -449,7 +449,7 @@ const App = (() => {
             el.tabTable.addEventListener('click', () => showSection('table'));
         }
 
-        // Tema claro/oscuro (cabecera y barra de la Mesa).
+        // Tema claro/oscuro (cabecera y franja central de la Mesa).
         if (el.themeToggle) el.themeToggle.addEventListener('click', toggleTheme);
         if (el.tableThemeToggle) el.tableThemeToggle.addEventListener('click', toggleTheme);
 
@@ -1425,6 +1425,8 @@ const App = (() => {
                 (s.byeCount ? ' <span class="badge">bye x' + s.byeCount + '</span>' : '') +
                 '</td>' +
                 '<td>' + s.matchPoints + '</td>' +
+                '<td class="record" title="Victorias-derrotas-empates; el bye cuenta como victoria">' +
+                    s.matchRecord + '</td>' +
                 '<td>' + fmtPct(s.omw) + '</td>' +
                 '<td>' + fmtPct(s.gameWinPct) + '</td>' +
                 '<td>' + fmtPct(s.ogw) + '</td>';

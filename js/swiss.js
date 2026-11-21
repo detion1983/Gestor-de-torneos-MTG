@@ -460,6 +460,11 @@ const Swiss = (() => {
 
         const list = Array.from(stats.values());
         list.forEach((s) => {
+            s.matchesPlayed = s.matchesWon + s.matchesDrawn + s.matchesLost;
+            // Récord de rondas en formato V-D-E (victorias-derrotas-empates),
+            // el mismo que se muestra en la clasificación. El bye cuenta como
+            // victoria, igual que para los puntos.
+            s.matchRecord = s.matchesWon + '-' + s.matchesLost + '-' + s.matchesDrawn;
             s.matchWinPct = matchWinPct(s);
             s.gameWinPct = gameWinPct(s);
         });

@@ -27,7 +27,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=2.4.3">
+    <link rel="stylesheet" href="css/styles.css?v=2.4.5">
 </head>
 <body>
     <!-- Fondo opcional (assets/images/background.jpg) y halos de maná -->
@@ -60,7 +60,7 @@
                 </div>
             </div>
             <div class="header-side">
-                <span class="version-chip" id="appVersionChip">v2.4.3</span>
+                <span class="version-chip" id="appVersionChip">v2.4.5</span>
                 <span class="format-chip">Suizo · Top</span>
                 <button id="themeToggle" class="theme-toggle" type="button"
                         aria-label="Cambiar al tema oscuro"
@@ -312,23 +312,45 @@
             <div class="panel">
                 <div class="panel-head">
                     <h3>Clasificación (Standings)</h3>
-                    <span class="chip chip-muted">Pts · OMW% · GW% · OGW%</span>
+                    <span class="chip chip-muted">Pts · V-D-E · OMW% · GW% · OGW%</span>
                 </div>
                 <div class="table-wrap">
                     <table id="standingsTable">
                         <thead>
                             <tr>
-                                <th>#</th>
-                                <th>Jugador</th>
+                                <th title="Posición en la clasificación">#</th>
+                                <th title="Nombre del jugador. El badge 💤 indica los byes recibidos">Jugador</th>
                                 <th title="Puntos de torneo (victoria = 3, empate = 1, derrota = 0, bye = 3)">Pts</th>
-                                <th title="OMW% = Porcentaje de victorias de tus rivales (fuerza de tus oponentes)">OMW%</th>
-                                <th title="GW% = Porcentaje de partidas (games) que has ganado">GW%</th>
-                                <th title="OGW% = Porcentaje de partidas (games) ganadas por tus rivales">OGW%</th>
+                                <th title="Récord de rondas: victorias-derrotas-empates (ej. 3-1-1). El bye cuenta como victoria">V-D-E</th>
+                                <th title="OMW% = Porcentaje medio de victorias de tus rivales (fuerza de tus oponentes)">OMW%</th>
+                                <th title="GW% = Porcentaje de partidas individuales (games) que has ganado">GW%</th>
+                                <th title="OGW% = Porcentaje medio de partidas (games) ganadas por tus rivales">OGW%</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
                     </table>
                 </div>
+                <details class="standings-help" id="standingsHelp" open>
+                    <summary>ℹ️ Cómo se calcula la clasificación</summary>
+                    <p>
+                        <strong>#</strong> posición · <strong>V-D-E</strong>
+                        victorias-derrotas-empates en rondas (<code>3-1-1</code> = 3 ganadas,
+                        1 perdida y 1 empatada). El <strong>bye</strong> cuenta como victoria.
+                    </p>
+                    <p>
+                        <strong>Pts</strong> puntos de torneo: victoria <strong>3</strong>,
+                        empate <strong>1</strong>, derrota <strong>0</strong> y bye <strong>3</strong>.
+                    </p>
+                    <p>
+                        <strong>OMW%</strong> % de victorias de tus rivales ·
+                        <strong>GW%</strong> % de partidas individuales (<em>games</em>) ganadas ·
+                        <strong>OGW%</strong> % de partidas ganadas por tus rivales.
+                    </p>
+                    <p>
+                        <strong>Orden:</strong> Pts → OMW% → GW% → OGW%.
+                        Si persiste el empate, por orden alfabético.
+                    </p>
+                </details>
                 <div class="toolbar toolbar-end">
                     <button id="shareStandingsButton" class="btn ghost small icon-only" type="button"
                             aria-label="Copiar imagen de la clasificación"
@@ -366,12 +388,6 @@
                         <h2 class="table-title">🎴 Mesa</h2>
                         <span class="chip" id="tableStatus">4 jugadores · 20 vidas</span>
                     </div>
-                    <button id="tableThemeToggle" class="table-action" type="button"
-                            aria-label="Cambiar al tema oscuro"
-                            title="Cambiar al tema oscuro">
-                        <span id="tableThemeIcon" aria-hidden="true">🌙</span>
-                        <span id="tableThemeLabel" class="table-action-label">Oscuro</span>
-                    </button>
                 </div>
                 <div class="table-seats" id="tableSeats" data-count="4">
                     <!-- Los ajustes viven en la fila central, entre los asientos,
@@ -415,6 +431,12 @@
                                 <span id="tableResetIcon" aria-hidden="true">🔄</span>
                                 <span id="tableResetLabel" class="table-reset-text">Reiniciar mesa</span>
                             </button>
+                            <button id="tableThemeToggle" class="table-action table-theme-toggle" type="button"
+                                    aria-label="Cambiar al tema oscuro"
+                                    title="Cambiar al tema oscuro">
+                                <span id="tableThemeIcon" aria-hidden="true">🌙</span>
+                                <span id="tableThemeLabel" class="table-action-label">Oscuro</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -439,7 +461,7 @@
             <span class="pip pip-g"></span>
         </div>
         <p>Datos guardados en tu navegador (localStorage). <span id="playerCount"></span></p>
-        <p class="app-version">Versión <span id="appVersion">v2.4.3</span></p>
+        <p class="app-version">Versión <span id="appVersion">v2.4.5</span></p>
         <p class="legal">
             Proyecto no oficial y sin ánimo de lucro. Magic: The Gathering y sus símbolos son
             propiedad de Wizards of the Coast y se usan bajo su
@@ -455,15 +477,15 @@
         <p class="noscript">Esta aplicación necesita JavaScript activado para funcionar.</p>
     </noscript>
 
-    <script src="js/storage.js?v=2.4.3"></script>
-    <script src="js/swiss.js?v=2.4.3"></script>
-    <script src="js/art.js?v=2.4.3"></script>
-    <script src="js/share.js?v=2.4.3"></script>
-    <script src="js/timer.js?v=2.4.3"></script>
-    <script src="js/table.js?v=2.4.3"></script>
-    <script src="js/app.js?v=2.4.3"></script>
-    <script src="js/install.js?v=2.4.3"></script>
-    <script src="js/pwa-update.js?v=2.4.3"></script>
+    <script src="js/storage.js?v=2.4.5"></script>
+    <script src="js/swiss.js?v=2.4.5"></script>
+    <script src="js/art.js?v=2.4.5"></script>
+    <script src="js/share.js?v=2.4.5"></script>
+    <script src="js/timer.js?v=2.4.5"></script>
+    <script src="js/table.js?v=2.4.5"></script>
+    <script src="js/app.js?v=2.4.5"></script>
+    <script src="js/install.js?v=2.4.5"></script>
+    <script src="js/pwa-update.js?v=2.4.5"></script>
 </body>
 </html>
 

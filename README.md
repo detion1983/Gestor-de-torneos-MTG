@@ -1,6 +1,6 @@
 # Gestión de Torneos de Magic 🏆
 
-**Versión actual: v2.4.3** · 21 de noviembre de 2026
+**Versión actual: v2.4.5** · 21 de noviembre de 2026
 
 Gestor de torneos de **Magic: The Gathering** (sistema suizo, resultados y clasificación).
 Permite crear torneos, inscribir jugadores, generar rondas por sistema **suizo**,
@@ -33,7 +33,7 @@ La versión se muestra de forma discreta en el pie de la página.
 - **Introducción de resultados** por mesa con un **desplegable central**: jugador 1
   a la izquierda, jugador 2 a la derecha y el marcador exacto en medio (`0-0`,
   `1-0`, `1-1`, `2-1`, `2-0`, `0-1`, `1-2`, `0-2`).
-- **Clasificación (standings)** con: Puntos, OMW%, GW% y OGW% (formato oficial de desempates).
+- **Clasificación (standings)** con: récord **V-D-E** (victorias-derrotas-empates, p. ej. `3-1-1`), Puntos, OMW%, GW% y OGW% (formato oficial de desempates), con una leyenda desplegable que explica cada columna.
 - **Jugadores retirados** (drop) que dejan de emparejarse.
 - **Exportar / Importar** todos los datos en un archivo JSON (copia de seguridad).
 - **Persistencia** automática en el navegador (`localStorage`).
@@ -44,7 +44,10 @@ La versión se muestra de forma discreta en el pie de la página.
   si el navegador no permite copiar imágenes, lo descarga. La clasificación se
   dibuja como una **tabla** (columnas, filas, líder, byes y retirados) y la ronda
   como **tarjetas por mesa** (Mesa, estado y P1 · marcador · P2), igual que en la
-  web. El **bracket** conserva su diálogo con vista previa, descarga, compartir
+  web. En la clasificación las columnas de puntos, récord V-D-E y desempates se
+  ajustan al nombre más largo, y el cartel incluye una leyenda con el significado
+  de cada columna. En las mesas cada nombre queda pegado al marcador central.
+  El **bracket** conserva su diálogo con vista previa, descarga, compartir
   nativo y texto.
 - **Avisos no bloqueantes**: toasts para confirmar acciones y diálogos propios para
   lo delicado (eliminar torneo, deshacer rondas, cerrar la suiza).
@@ -60,14 +63,15 @@ La versión se muestra de forma discreta en el pie de la página.
   Commander) con solo **− / +**, **veneno** con aviso a 10 y **maná flotante
   W/U/B/R/G/C integrado en el asiento** de cada jugador. El desplegable de color
   pinta la ilustración de `assets/images/colors/` como fondo de su región. Los
-  ajustes de la mesa (número de jugadores, vidas, giro, vaciar maná y reinicio)
-  se agrupan en la **franja central entre los asientos**, junto al botón
-  **🏆 Torneos**, para dejar libre la barra superior. Todo se guarda en
-  `localStorage` (clave `dci.table`).
+  ajustes de la mesa (número de jugadores, vidas, giro, vaciar maná, reinicio y
+  **tema claro/oscuro**) se agrupan en **una sola línea** en la franja central
+  entre los asientos, junto al botón **🏆 Torneos**, para dejar libre la barra
+  superior. Todo se guarda en `localStorage` (clave `dci.table`).
 - **Tema claro y oscuro**: la app abre en un tema **claro tipo pergamino**, más
   luminoso y legible, con el oro y los colores de maná como acentos. El botón
-  **🌙 Oscuro / ☀️ Claro** de la cabecera (y de la barra de la Mesa) cambia al
-  tema oscuro original y recuerda la elección en `localStorage` (`dci.theme`).
+  **🌙 Oscuro / ☀️ Claro** de la cabecera (y de la franja central de la Mesa)
+  cambia al tema oscuro original y recuerda la elección en `localStorage`
+  (`dci.theme`).
 
 ---
 
@@ -91,7 +95,7 @@ direcciones o menú **⋮ → Instalar aplicación**) y desde **Safari en iPhone
   **🔄 Hay una versión nueva disponible** con el botón **Actualizar**. Al pulsarlo
   se activa el service worker nuevo y la página se recarga una sola vez.
 - Para subir la versión de código y de caché:
-  `python tools/bump-version.py 2.4.3`.
+  `python tools/bump-version.py 2.4.5`.
 - El logo oficial está en `assets/images/logo.jpg` y se usa en la cabecera, el
   instalador y los iconos. Si lo cambias, regenera los iconos con
   `python tools/make-icons.py` (192, 512, maskable, Apple Touch y favicon).
@@ -350,15 +354,23 @@ borrar cada mesa a mano: usa el botón **🔙 Deshacer última ronda**.
 - Derrota: **0 puntos**
 - Bye: **3 puntos** (como victoria)
 
-### Desempates (columnas de la clasificación)
+### Columnas de la clasificación
 
-En la tabla de clasificación verás estas columnas (pasa el ratón por encima para ver el texto de ayuda):
+En la tabla de clasificación verás estas columnas (pasa el ratón por encima para
+ver el texto de ayuda) y, debajo, una **leyenda desplegable** con la misma
+explicación:
 
+- **#**: posición en la clasificación.
+- **Jugador**: nombre del inscrito. El badge **💤 bye xN** indica los descansos
+  recibidos.
+- **V-D-E**: **victorias-derrotas-empates** en rondas, en formato `3-1-1`
+  (3 ganadas, 1 perdida y 1 empatada). Las tres cifras suman las rondas jugadas.
+  El **bye cuenta como victoria**, igual que para los puntos.
 - **Pts**: puntos de torneo. Victoria **3** · Empate **1** · Derrota **0** · Bye **3**.
 - **OMW%** (*Opponents' Match Win %*): **porcentaje de victorias de tus rivales**.
   Mide la "fuerza" de los jugadores contra los que te has enfrentado.
-- **GW%** (*Game Win %*): **porcentaje de partidas (*games*) que has ganado**,
-  contando también los empates como media partida.
+- **GW%** (*Game Win %*): **porcentaje de partidas individuales (*games*) que has
+  ganado**, contando también los empates como media partida.
 - **OGW%** (*Opponents' Game Win %*): **porcentaje de partidas ganadas por tus
   rivales**.
 
@@ -396,15 +408,18 @@ Desde el detalle del torneo:
   **tarjetas por mesa** (Mesa, estado y P1 · marcador · P2, con el BYE en verde)
   y lo **copia al portapapeles** en el mismo clic.
 - **📋 (icono en Clasificación)** → genera el cartel con la **tabla completa**
-  (`#`, Jugador, Pts, OMW%, GW%, OGW%), el líder destacado, los byes y los
-  retirados, y lo **copia al portapapeles**.
+  (`#`, Jugador, Pts, V-D-E, OMW%, GW%, OGW%), el líder destacado, los byes y
+  los retirados, además de una leyenda al pie con el significado de cada columna.
+  Lo **copia al portapapeles**.
 - **📤 Compartir bracket** → abre el diálogo del Top con las rondas, resultados
   y campeón, y sus acciones de texto/imagen.
 
 Los dos botones de ronda y clasificación son **un único icono**: no abren el
 panel de vista previa ni ofrecen botones de texto, WhatsApp o descarga. La imagen
 se genera por Canvas a 960 px de ancho y doble resolución con la misma jerarquía
-visual de la app, y se pasa a `ClipboardItem` como promesa para que
+visual de la app. La tabla mide el nombre más largo para acercar Pts y los
+desempates, y las tarjetas de mesa centran `P1 · marcador · P2` con los nombres
+junto al marcador. Se pasa a `ClipboardItem` como promesa para que
 **Safari/iOS** también puedan copiarla dentro del gesto del usuario. Si el
 navegador no admite copiar imágenes, se **descarga automáticamente** y se avisa
 con un toast.
@@ -443,7 +458,7 @@ tira de los cinco colores de maná y la misma tipografía que la app. Se puede
   con desplazamiento interno y botones que se reordenan en móvil.
 - **Accesibilidad**: foco visible, `aria-live` en los avisos y respeto a
   `prefers-reduced-motion`.
-- **Caché controlada**: CSS y JS se cargan con `?v=2.4.2`, así una versión nueva se
+- **Caché controlada**: CSS y JS se cargan con `?v=2.4.5`, así una versión nueva se
   ve al instante sin tener que borrar la caché del navegador.
 
 
@@ -484,6 +499,40 @@ La versión se define en **una sola línea** de `js/app.js` (`APP_VERSION`) y se
 muestra en la cabecera, en el pie de la página y en el título de la pestaña.
 Al publicar cambios, sube el número (recomendado *vMAYOR.MENOR.PARCHE*), actualiza
 los `?v=` de `index.html` y añade una línea nueva al histórico con su **fecha**.
+
+### v2.4.5 · 21 de noviembre de 2026
+- **Récord V-D-E en la clasificación**: nueva columna con
+  **victorias-derrotas-empates** en formato `3-1-1`, calculada a partir de los
+  resultados de cada ronda. El bye cuenta como victoria, igual que para los
+  puntos. El dato viaja en `Swiss.calculateStandings` como `matchRecord`.
+- **Leyenda explicativa**: debajo de la tabla, un bloque desplegable
+  **ℹ️ Cómo se calcula la clasificación** explica `#`, `V-D-E`, `Pts`, `OMW%`,
+  `GW%`, `OGW%` y el orden de desempates. También se añade al pie del cartel PNG
+  para que la imagen se entienda sin abrir la app.
+- **Cartel de clasificación actualizado**: la tabla compartida incluye la columna
+  `V-D-E` y una leyenda de tres líneas; las columnas siguen ajustándose al nombre
+  más largo y los números permanecen cerca del jugador.
+- **Pruebas**: el E2E comprueba la cabecera `V-D-E`, el récord del líder
+  (`2-0-0`) y que la leyenda contiene los conceptos de clasificación.
+- **Caché** controlada con `?v=2.4.5` en CSS y JS.
+
+### v2.4.4 · 21 de noviembre de 2026
+- **Carteles más compactos**: en la imagen de **clasificación** la columna del
+  jugador se ajusta al nombre más largo y el espacio sobrante se reparte entre
+  Pts, OMW%, GW% y OGW%, así los números quedan cerca del nombre. En la imagen de
+  **ronda**, el bloque `P1 · marcador · P2` se centra y cada nombre queda junto
+  al marcador, sin viajar a los extremos de la tarjeta.
+- **Mesa en una sola línea**: el conmutador de **tema claro/oscuro** se traslada
+  de la barra superior a la **franja central**, junto a Torneos, jugadores,
+  vidas, giro, vaciar maná y reinicio. Todos los controles se alinean en una
+  única fila simétrica, también en móvil, y la barra superior solo conserva
+  título y estado.
+- **Tema claro y oscuro**: la franja central mantiene el contraste y el aspecto
+  de la app en ambos temas, con etiquetas compactas en pantallas estrechas.
+- **Pruebas**: `node --check`, `verify`, `smoke`, `pwa` y `e2e` siguen en verde;
+  el E2E comprueba que la franja central no se parte y que a **320 px** no hay
+  scroll horizontal.
+- **Caché** controlada con `?v=2.4.4` en CSS y JS.
 
 ### v2.4.3 · 21 de noviembre de 2026
 - **Cartel de clasificación como tabla**: la imagen del botón **📋** reproduce

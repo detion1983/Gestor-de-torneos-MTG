@@ -72,7 +72,8 @@ const Share = (() => {
             lines.push('━━━ CLASIFICACIÓN ━━━');
             standings.forEach((s, i) => {
                 lines.push(
-                    (i + 1) + 'º ' + s.player.name + '  ' + s.matchPoints + ' pts' +
+                    (i + 1) + 'º ' + s.player.name + '  ' + s.matchRecord +
+                    '  ·  ' + s.matchPoints + ' pts' +
                     '  (OMW ' + fmtPct(s.omw) + ' · GW ' + fmtPct(s.gameWinPct) +
                     ' · OGW ' + fmtPct(s.ogw) + ')'
                 );
@@ -102,7 +103,8 @@ const Share = (() => {
         lines.push('🏆 ' + tournament.name + ' — Clasificación');
         standings.forEach((s, i) => {
             lines.push(
-                (i + 1) + 'º ' + s.player.name + '  ' + s.matchPoints + ' pts' +
+                (i + 1) + 'º ' + s.player.name + '  ' + s.matchRecord +
+                '  ·  ' + s.matchPoints + ' pts' +
                 '  (OMW ' + fmtPct(s.omw) + ' · GW ' + fmtPct(s.gameWinPct) +
                 ' · OGW ' + fmtPct(s.ogw) + ')'
             );
@@ -486,17 +488,34 @@ const Share = (() => {
             width - PAD, height - 22);
     }
 
-    function standingColumns(innerWidth) {
+    // La columna del jugador se ajusta al nombre mas largo y el espacio que
+    // sobra se reparte entre Pts, el record V-D-E y los desempates. Asi los
+    // numeros quedan cerca del nombre (como en la tabla web) sin hueco enorme.
+    function standingColumns(innerWidth, nameWidth) {
         const cols = [
             { label: '#', width: 52, align: 'center' },
             { label: 'JUGADOR', width: 0, align: 'left' },
-            { label: 'PTS', width: 70, align: 'center' },
+            { label: 'PTS', width: 64, align: 'center' },
+            { label: 'V-D-E', width: 84, align: 'center' },
             { label: 'OMW%', width: 94, align: 'center' },
             { label: 'GW%', width: 88, align: 'center' },
             { label: 'OGW%', width: 88, align: 'center' },
         ];
-        const fixed = cols.reduce((sum, col) => sum + col.width, 0);
-        cols[1].width = innerWidth - fixed;
+        const minName = 220;
+        const maxName = Math.min(320, Math.max(minName, innerWidth - 470));
+        cols[1].width = Math.min(maxName, Math.max(minName, Math.round(nameWidth || minName)));
+
+        const used = cols.reduce((sum, col) => sum + col.width, 0);
+        let remaining = Math.max(0, innerWidth - used);
+        const weights = [0.14, 0.2, 0.24, 0.21, 0.21];
+        [2, 3, 4, 5, 6].forEach((index, position) => {
+            const share = position === weights.length - 1
+                ? remaining
+                : Math.round((innerWidth - used) * weights[position]);
+            const add = Math.max(0, Math.min(remaining, share));
+            cols[index].width += add;
+            remaining -= add;
+        });
         return cols;
     }
 
@@ -512,7 +531,9 @@ const Share = (() => {
         const rows = Math.max(standings.length, 1);
         const tableTop = BOARD.header;
         const tableH = headH + rows * rowH;
-        const height = tableTop + tableH + 18 + BOARD.footer;
+        const legendTop = tableTop + tableH + 18;
+        const legendH = 54;
+        const height = tableTop + tableH + 18 + legendH + BOARD.footer;
 
         const board = createBoardCanvas(height);
         const ctx = board.ctx;
@@ -525,7 +546,18 @@ const Share = (() => {
         ctx.fillStyle = thead;
         ctx.fillRect(PAD, tableTop, inner, headH);
 
-        const cols = standingColumns(inner);
+        // El ancho del nombre se mide sobre el texto real para que Pts y los
+        // desempates empiecen justo despues de la columna del jugador.
+        ctx.save();
+        ctx.font = font(600, 17, SANS);
+        let nameWidth = 220;
+        standings.forEach((s) => {
+            const badge = s.byeCount ? 68 : 0;
+            nameWidth = Math.max(nameWidth, ctx.measureText(s.player.name || '').width + 24 + badge);
+        });
+        ctx.restore();
+
+        const cols = standingColumns(inner, nameWidth);
         ctx.save();
         ctx.textBaseline = 'middle';
         ctx.font = font(700, 12, SANS);
@@ -617,6 +649,7 @@ const Share = (() => {
 
             const values = [
                 String(s.matchPoints),
+                s.matchRecord,
                 fmtPct(s.omw),
                 fmtPct(s.gameWinPct),
                 fmtPct(s.ogw),
@@ -626,8 +659,8 @@ const Share = (() => {
                 ctx.textAlign = 'center';
                 ctx.font = valueIndex === 0
                     ? font(700, 18, SANS)
-                    : font(400, 15, SANS);
-                ctx.fillStyle = valueIndex === 3 ? C.dim : C.ink;
+                    : (valueIndex === 1 ? font(600, 14, SANS) : font(400, 15, SANS));
+                ctx.fillStyle = valueIndex === 4 ? C.dim : C.ink;
                 if (s.player.dropped) ctx.globalAlpha = 0.55;
                 ctx.fillText(value, x + col.width / 2, mid + 1);
                 ctx.globalAlpha = 1;
@@ -646,6 +679,21 @@ const Share = (() => {
         ctx.strokeStyle = C.lineSoft;
         ctx.lineWidth = 1;
         ctx.strokeRect(PAD + 0.5, tableTop + 0.5, inner - 1, tableH - 1);
+        ctx.restore();
+
+        // Leyenda para que el cartel se entienda sin abrir la app.
+        ctx.save();
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        ctx.font = font(400, 12, SANS);
+        ctx.fillStyle = 'rgba(239, 230, 210, 0.72)';
+        ctx.fillText('V-D-E = victorias-derrotas-empates (ej. 3-1-1) · Pts = victoria 3 · empate 1 · derrota 0 · bye 3',
+            PAD, legendTop + 12);
+        ctx.fillStyle = 'rgba(217, 178, 95, 0.72)';
+        ctx.fillText('OMW% = victorias de tus rivales · GW% = partidas ganadas · OGW% = partidas de tus rivales',
+            PAD, legendTop + 27);
+        ctx.fillText('El bye cuenta como victoria · Orden: Pts → OMW% → GW% → OGW%',
+            PAD, legendTop + 42);
         ctx.restore();
 
         paintBoardFooter(ctx, W, height, options);
@@ -780,23 +828,27 @@ const Share = (() => {
         ctx.fillStyle = bye || done ? C.green : C.gold;
         ctx.fillText(state, x + 14 + pillW + 12, y + 23);
 
-        // Nombres a los lados y marcador en el centro.
+        // Nombres junto al marcador: el bloque P1 · marcador · P2 queda centrado
+        // y los rivales no se separan hasta los bordes de la tarjeta.
         const boxW = 122;
         const boxX = x + w / 2 - boxW / 2;
-        const nameMax = boxX - (x + 16) - 20;
+        const nameGap = 22;
+        const nameMax = Math.min(300,
+            boxX - x - nameGap - 16,
+            x + w - (boxX + boxW) - nameGap - 16);
         const p1 = playerName(tournament, pairing.p1Id);
         const p2 = bye ? 'descansa esta ronda' : playerName(tournament, pairing.p2Id);
 
-        ctx.textAlign = 'left';
+        ctx.textAlign = 'right';
         ctx.font = font(600, 17, SANS);
         fitFont(ctx, p1, nameMax, 17, 12, 600, SANS);
         ctx.fillStyle = C.ink;
-        ctx.fillText(fitText(ctx, p1, nameMax), x + 16, y + 61);
+        ctx.fillText(fitText(ctx, p1, nameMax), boxX - nameGap, y + 61);
 
-        ctx.textAlign = 'right';
+        ctx.textAlign = 'left';
         fitFont(ctx, p2, nameMax, bye ? 14 : 17, 12, bye ? 400 : 600, SANS);
         ctx.fillStyle = bye ? C.dim : C.ink;
-        ctx.fillText(fitText(ctx, p2, nameMax), x + w - 16, y + 61);
+        ctx.fillText(fitText(ctx, p2, nameMax), boxX + boxW + nameGap, y + 61);
 
         const scoreText = bye ? 'BYE' : (done ? (pairing.score || 'OK') : '—');
         ctx.fillStyle = done || bye

@@ -563,9 +563,18 @@ function connect(wsUrl) {
             await new Promise((r) => setTimeout(r, 700));
             const table = document.querySelector('#standingsTable tbody');
             const rows = table ? Array.from(table.querySelectorAll('tr')) : [];
+            const headers = Array.from(document.querySelectorAll('#standingsTable th'))
+                .map((th) => th.textContent.trim()).join('|');
+            const leaderRecord = rows[0] && rows[0].querySelector('td.record')
+                ? rows[0].querySelector('td.record').textContent.trim() : '';
+            const legend = document.getElementById('standingsHelp')
+                ? document.getElementById('standingsHelp').textContent.trim() : '';
             return {
                 rows: rows.length,
                 leader: rows[0] ? rows[0].textContent : '',
+                headers: headers,
+                leaderRecord: leaderRecord,
+                legend: legend,
                 awardsHidden: document.getElementById('awardsPanel').hidden,
                 awardsCanvas: document.querySelectorAll('#awardsPreview canvas').length,
                 awardsPng: (() => {
@@ -579,6 +588,14 @@ function connect(wsUrl) {
         `);
         check('la clasificación se repinta con 4 jugadores', seeded.rows === 4, seeded.rows);
         check('el líder es Ana', /Ana/.test(seeded.leader || ''), (seeded.leader || '').slice(0, 40));
+        check('la clasificación muestra el récord V-D-E',
+            seeded.leaderRecord === '2-0-0', seeded.leaderRecord);
+        check('cabecera V-D-E y leyenda de columnas',
+            /V-D-E/.test(seeded.headers || '') &&
+            /victorias-derrotas-empates/.test(seeded.legend || '') &&
+            /OMW%/.test(seeded.legend || '') &&
+            /Orden: Pts/.test(seeded.legend || ''),
+            seeded.headers + ' · ' + (seeded.legend || '').slice(0, 90));
         check('panel del campeón visible', seeded.awardsHidden === false, 'hidden=' + seeded.awardsHidden);
         check('chip del campeón con el Top', /CAMPEÓN · TOP 4/.test(seeded.awardsChip), seeded.awardsChip);
         check('resumen del campeón correcto', /Ana/.test(seeded.awardsSummary || ''), seeded.awardsSummary);
@@ -682,12 +699,27 @@ function connect(wsUrl) {
                 hub: !!document.querySelector('#tableSeats .table-hub'),
                 backInsideHub: !!document.querySelector('#tableSeats .table-hub .table-back'),
                 controlsInHub: ['tableCount', 'tableStartLife', 'tableRotate',
-                    'tableManaClear', 'tableReset'].every((id) =>
+                    'tableManaClear', 'tableReset', 'tableThemeToggle'].every((id) =>
                     !!document.querySelector('#tableSeats .table-hub #' + id)),
                 topbarControls: document.querySelectorAll('.table-topbar #tableCount, ' +
                     '.table-topbar #tableStartLife, .table-topbar #tableRotate, ' +
-                    '.table-topbar #tableManaClear, .table-topbar #tableReset').length,
+                    '.table-topbar #tableManaClear, .table-topbar #tableReset, ' +
+                    '.table-topbar #tableThemeToggle').length,
                 themeInTopbar: !!document.querySelector('.table-topbar #tableThemeToggle'),
+                themeInHub: !!document.querySelector('#tableSeats .table-hub #tableThemeToggle'),
+                hubOneLine: (() => {
+                    const hub = document.querySelector('#tableSeats .table-hub');
+                    const toolbar = hub.querySelector('.table-toolbar');
+                    const items = [hub.querySelector('.table-back')]
+                        .concat(Array.from(toolbar.children));
+                    const centers = items.map((item) => {
+                        const rect = item.getBoundingClientRect();
+                        return Math.round((rect.top + rect.bottom) / 2);
+                    });
+                    return items.length === 7 &&
+                        Math.max.apply(null, centers) - Math.min.apply(null, centers) <= 1 &&
+                        hub.scrollWidth <= hub.clientWidth + 1;
+                })(),
                 hubBetween: (() => {
                     const hubRect = document.querySelector('#tableSeats .table-hub').getBoundingClientRect();
                     const topRect = seat(0).getBoundingClientRect();
@@ -740,6 +772,38 @@ function connect(wsUrl) {
             info.savedView = localStorage.getItem('dci.view');
             return info;
         `);
+        await client.send('Emulation.setDeviceMetricsOverride', {
+            width: 320, height: 844, deviceScaleFactor: 1, mobile: true,
+        });
+        const mesaMobile = await evaluate(`
+            return (() => {
+                const hub = document.querySelector('#tableSeats .table-hub');
+                const toolbar = hub.querySelector('.table-toolbar');
+                const items = [hub.querySelector('.table-back')]
+                    .concat(Array.from(toolbar.children));
+                const centers = items.map((item) => {
+                    const rect = item.getBoundingClientRect();
+                    return Math.round((rect.top + rect.bottom) / 2);
+                });
+                const hidden = (selector) => {
+                    const node = hub.querySelector(selector);
+                    return !node || getComputedStyle(node).display === 'none';
+                };
+                return {
+                    oneLine: items.length === 7 &&
+                        Math.max.apply(null, centers) - Math.min.apply(null, centers) <= 1,
+                    noOverflow: hub.scrollWidth <= hub.clientWidth + 1,
+                    labelsCompact: hidden('.seg-label') && hidden('.table-field-label') &&
+                        hidden('.table-check-label') && hidden('.table-action-label'),
+                    themeVisible: getComputedStyle(
+                        document.getElementById('tableThemeToggle')).display !== 'none',
+                };
+            })()
+        `);
+        await client.send('Emulation.clearDeviceMetricsOverride');
+        check('en móvil (320 px) la franja central sigue en una línea, sin scroll y con tema',
+            mesaMobile.oneLine && mesaMobile.noOverflow && mesaMobile.labelsCompact &&
+            mesaMobile.themeVisible, JSON.stringify(mesaMobile));
         check('la pestaña Mesa ocupa la pantalla completa',
             mesa.viewVisible && mesa.detailHidden && mesa.tabActive && mesa.fullscreen &&
             mesa.headerHidden, JSON.stringify([mesa.viewVisible, mesa.detailHidden,
@@ -762,11 +826,13 @@ function connect(wsUrl) {
             mesa.manaR + ' rojo · ' + mesa.manaW + ' blanco');
         check('el botón central separa los jugadores y vuelve a Torneos', mesa.back === true &&
             mesa.backInsideHub === true);
-        check('los ajustes de la mesa viven en el centro entre los asientos',
-            mesa.hub === true && mesa.controlsInHub === true && mesa.hubBetween === true,
-            [mesa.hub, mesa.controlsInHub, mesa.hubBetween].join(' · '));
-        check('la barra superior de la Mesa deja solo título, estado y tema',
-            mesa.topbarControls === 0 && mesa.themeInTopbar === true,
+        check('los ajustes y el tema comparten una sola línea central entre los asientos',
+            mesa.hub === true && mesa.controlsInHub === true && mesa.hubBetween === true &&
+            mesa.themeInHub === true && mesa.hubOneLine === true,
+            [mesa.hub, mesa.controlsInHub, mesa.hubBetween, mesa.themeInHub,
+                mesa.hubOneLine].join(' · '));
+        check('la barra superior de la Mesa solo deja título y estado',
+            mesa.topbarControls === 0 && mesa.themeInTopbar === false,
             mesa.topbarControls + ' · ' + mesa.themeInTopbar);
         check('la Mesa también permite cambiar de tema', mesa.themeToggle === true,
             mesa.themeLabel);

@@ -260,5 +260,22 @@ check('al reabrir recupera nombre, color y vida',
 check('al reabrir recupera veneno y maná', restored.players[0].poison === 2 && restored.players[0].mana.g === 4);
 check('al reabrir recupera la rotación', restored.rotate === false);
 
+// --- clasificación: récord V-D-E (victorias-derrotas-empates) ---
+const tRecord = Swiss.createTournament({ name: 'Récord V-D-E' });
+Swiss.addPlayer(tRecord, 'Ana');
+Swiss.addPlayer(tRecord, 'Luis');
+Swiss.generateRound(tRecord);
+Swiss.setResult(tRecord, 1, 1, '2-1');
+const recordWin = Swiss.calculateStandings(tRecord)
+    .map((row) => row.matchRecord).sort().join(',');
+check('standings: V-D-E tras una victoria (1-0-0 y 0-1-0)',
+    recordWin === '0-1-0,1-0-0', recordWin);
+
+Swiss.setResult(tRecord, 1, 1, '1-1');
+const recordDraw = Swiss.calculateStandings(tRecord)
+    .map((row) => row.matchRecord).sort().join(',');
+check('standings: V-D-E tras un empate (0-0-1)',
+    recordDraw === '0-0-1,0-0-1', recordDraw);
+
 console.log(fails ? '\n' + fails + ' comprobación(es) fallida(s)' : '\nTodo correcto');
 process.exit(fails ? 1 : 0);
